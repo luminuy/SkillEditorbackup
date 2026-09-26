@@ -16,3 +16,5 @@ __pycache__/
 assets/luts/.cache/
 *.zip
 *.bundle
+.venv/
+venv/
