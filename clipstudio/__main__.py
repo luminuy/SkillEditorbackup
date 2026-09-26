@@ -57,12 +57,15 @@ def cmd_doctor(_a):
     from . import finish
 
     if platform.system() == "Darwin":
-        try:
-            __import__("mlx_whisper")
-            mlx_ok = "ok (Apple Silicon GPU)"
-        except ImportError:
-            mlx_ok = "not installed — pip install mlx-whisper (much faster on M-series)"
-        print(f"mlx_whisper : {mlx_ok}")
+        if platform.machine() == "arm64":
+            try:
+                __import__("mlx_whisper")
+                mlx_ok = "ok (Apple Silicon GPU)"
+            except ImportError:
+                mlx_ok = "not installed — pip install mlx-whisper (much faster on M-series)"
+            print(f"mlx_whisper : {mlx_ok}")
+        else:
+            print("mac         : Intel — transcription uses faster-whisper on CPU")
         print(f"videotoolbox: {'ok (fast drafts)' if 'h264_videotoolbox' in finish.encoders() else 'not in this ffmpeg'}")
     fonts = sorted(f for f in os.listdir(FONTS_DIR) if f.endswith((".ttf", ".otf")))
     print(f"fonts       : {', '.join(fonts) or 'NONE'}")
