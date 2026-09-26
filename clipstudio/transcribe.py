@@ -102,8 +102,30 @@ def from_subtitles(path: str, language: str) -> dict:
     return {"language": language, "backend": f"import:{os.path.basename(path)}", "segments": segs}
 
 
+def _load_wav(path: str):
+    """16 kHz mono PCM wav (made by our ffmpeg) -> float32 numpy array, without PyAV."""
+    import wave
+
+    import numpy as np  # type: ignore
+
+    with wave.open(path, "rb") as w:
+        if w.getframerate() != 16000 or w.getnchannels() != 1 or w.getsampwidth() != 2:
+            raise SystemExit(f"expected 16 kHz mono 16-bit wav: {path}")
+        pcm = w.readframes(w.getnframes())
+    return np.frombuffer(pcm, dtype=np.int16).astype(np.float32) / 32768.0
+
+
 def whisper(src: str, language: str, model_name: str, prompt: str | None, device: str = "auto") -> dict:
     try:
+        try:
+            import av  # type: ignore  # noqa: F401
+        except ImportError:
+            # PyAV has no wheels on some Macs; faster-whisper only needs it to decode files, and we
+            # hand it decoded samples instead — a stub module is enough for the import to succeed.
+            import sys
+            import types
+
+            sys.modules.setdefault("av", types.ModuleType("av"))
         from faster_whisper import WhisperModel  # type: ignore
     except ImportError as exc:
         raise SystemExit(
@@ -120,7 +142,7 @@ def whisper(src: str, language: str, model_name: str, prompt: str | None, device
         vad = False
         print("  (onnxruntime not installed: transcribing without VAD — slightly slower, same result)", flush=True)
     seg_iter, info = model.transcribe(
-        src, language=language or None, word_timestamps=True, vad_filter=vad,
+        _load_wav(src), language=language or None, word_timestamps=True, vad_filter=vad,
         vad_parameters={"min_silence_duration_ms": 400} if vad else None, initial_prompt=prompt or None,
         condition_on_previous_text=False, beam_size=5,
     )

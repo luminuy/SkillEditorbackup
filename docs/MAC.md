@@ -50,14 +50,14 @@ open projects/<slug>/renders               # ไฟล์ mp4 → AirDrop เข
 open projects/<slug>/nle/<slug>.fcpxml     # เปิดใน Final Cut Pro
 ```
 
-## Mac Intel: ติดตั้ง faster-whisper ไม่ผ่าน / pip ค้างที่ `av-12...tar.gz`
-Intel Mac + Python 3.13 ไม่มีตัวสำเร็จรูปของ `onnxruntime` ทำให้ pip ถอยไปคอมไพล์ของเก่า — ติดตั้งแบบข้ามตัวนั้น:
+## Mac Intel: ติดตั้ง faster-whisper ไม่ผ่าน (`Failed to build 'av'`)
+Intel Mac + Python ใหม่ ๆ ไม่มีตัวสำเร็จรูปของ `av` และ `onnxruntime` — engine ไม่ต้องใช้ทั้งสองตัว ติดตั้งแบบข้ามได้:
 ```bash
 pip install imageio-ffmpeg pythainlp Pillow numpy
 pip install faster-whisper --no-deps
-pip install "ctranslate2>=4,<5" "tokenizers>=0.13,<1" "huggingface-hub>=0.21" "av>=13" tqdm
+pip install "ctranslate2>=4,<5" "tokenizers>=0.13,<1" "huggingface-hub>=0.21" tqdm
 ```
-engine จะถอดเสียงโดยไม่ใช้ VAD ให้อัตโนมัติ (ผลเหมือนเดิม ช้าลงเล็กน้อย)
+(engine ถอดเสียงเองด้วย ffmpeg + ไม่ใช้ VAD เมื่อไม่มี onnxruntime — ผลเหมือนเดิม)
 
 ## ปัญหาที่พบบ่อย
 | อาการ | แก้ |
