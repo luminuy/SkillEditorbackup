@@ -295,6 +295,21 @@ def cmd_status(a):
         print(f"  [{'x' if done else ' '}] {label}")
 
 
+def _reexec_in_project_venv():
+    """If a project .venv exists (setup-mac.sh) but we were started with another Python
+    (e.g. Claude Desktop calling plain `python3`), re-run this command inside the venv."""
+    if os.environ.get("CLIPSTUDIO_NO_VENV"):
+        return
+    for rel in (".venv/bin/python", ".venv/Scripts/python.exe"):
+        venv_py = os.path.join(ROOT, rel)
+        if os.path.exists(venv_py):
+            venv_dir = os.path.dirname(os.path.dirname(venv_py))
+            if os.path.realpath(sys.prefix) != os.path.realpath(venv_dir):
+                os.environ["CLIPSTUDIO_NO_VENV"] = "1"  # never loop
+                os.execv(venv_py, [venv_py, "-m", "clipstudio", *sys.argv[1:]])
+            return
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="clipstudio", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -337,4 +352,5 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
+    _reexec_in_project_venv()
     main()
