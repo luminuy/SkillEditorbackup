@@ -1,0 +1,8 @@
+{
+  "preset": "tarot",
+  "channel_name": "ดูดวงไพ่ทาโรต์",
+  "handle": "@yourtarotchannel",
+  "language": "th",
+  "platforms": ["tiktok", "reels", "shorts", "facebook"],
+  "posting": {"timezone": "Asia/Bangkok", "slots": ["07:30", "12:00", "19:30", "21:30"]}
+}

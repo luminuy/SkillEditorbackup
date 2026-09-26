@@ -1,0 +1,13 @@
+# media & working files
+projects/
+input/*
+!input/.gitkeep
+assets/music/*
+!assets/music/README.md
+*.mp4
+*.mov
+*.wav
+*.mp3
+__pycache__/
+*.pyc
+.DS_Store

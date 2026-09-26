@@ -1,0 +1,10 @@
+{
+  "niche": "podcast",
+  "brand": {"primary": "#0B132B", "accent": "#5BC0BE", "text": "#FFFFFF", "outline": "#000000",
+            "hook_text": "#FFFFFF", "hook_box": "#0B132B"},
+  "captions": {"style": "karaoke", "lines": 2, "y": 0.7},
+  "cta": {"text": "ฟังเต็มตอนได้ที่ช่องเลย"},
+  "edit": {"min_silence": 0.6, "pad": 0.15},
+  "asr": {"model": "large-v3-turbo", "prompt": "", "fixes": {}},
+  "chapter_patterns": [{"pattern": "(คำถาม|ถามว่า)", "kind": "question", "label": "Q&A"}]
+}

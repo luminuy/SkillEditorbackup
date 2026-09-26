@@ -1,0 +1,21 @@
+{
+  "niche": "tarot",
+  "brand": {"primary": "#2B1055", "accent": "#F5C542", "text": "#FFFFFF", "outline": "#12051F",
+            "hook_text": "#FFFFFF", "hook_box": "#2B1055"},
+  "captions": {"style": "highlight", "y": 0.68},
+  "hook": {"y": 0.15},
+  "labels": {"y": 0.29},
+  "cta": {"text": "เลือกกองต่อ หรือดูคำทำนายเต็มๆ ได้ที่ช่องเลยนะคะ"},
+  "disclaimer": {"text": "ดูดวงเพื่อเป็นแนวทางและความบันเทิง โปรดใช้วิจารณญาณ"},
+  "asr": {
+    "model": "large-v3-turbo",
+    "prompt": "ดูดวงไพ่ทาโรต์ ไพ่ยิปซี ราศีเมษ ราศีพฤษภ ราศีมิถุน ราศีกรกฎ ราศีสิงห์ ราศีกันย์ ราศีตุลย์ ราศีพิจิก ราศีธนู ราศีมังกร ราศีกุมภ์ ราศีมีน เลือกกอง กองที่หนึ่ง ไพ่ใบนี้ คนโสด คนมีคู่ เนื้อคู่ The Fool The Magician The High Priestess The Empress The Emperor The Lovers The Chariot Strength The Hermit Wheel of Fortune Justice The Hanged Man Death Temperance The Devil The Tower The Star The Moon The Sun Judgement The World Ace of Cups Ten of Cups Three of Swords Page of Wands Knight of Pentacles Queen King",
+    "fixes": {
+      "ราสี": "ราศี", "ไพ้": "ไพ่", "ราศีเมตร": "ราศีเมษ", "ราศีเมด": "ราศีเมษ", "มิถุ่น": "มิถุน",
+      "ราศีพฤศ": "ราศีพฤษภ", "ราศีกันยา": "ราศีกันย์", "ราศีกุม ": "ราศีกุมภ์ ", "พิจิตร": "พิจิก",
+      "คนโสตร": "คนโสด", "คนโซต": "คนโสด", "คนโสต": "คนโสด", "ทาโร่ต": "ทาโรต์", "ทาโรห์": "ทาโรต์",
+      "ไพ่ยิบซี": "ไพ่ยิปซี", "เลือกกองที่ 1": "เลือกกองที่ 1"
+    }
+  },
+  "chapter_patterns": []
+}

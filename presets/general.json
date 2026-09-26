@@ -1,0 +1,10 @@
+{
+  "niche": "general",
+  "brand": {"primary": "#111827", "accent": "#FACC15", "text": "#FFFFFF", "outline": "#000000",
+            "hook_text": "#111827", "hook_box": "#FACC15"},
+  "captions": {"style": "highlight", "y": 0.66},
+  "cta": {"text": "กดติดตามไว้ มีคลิปดี ๆ ทุกวัน"},
+  "disclaimer": {"burn_in": false, "text": ""},
+  "asr": {"model": "large-v3-turbo", "prompt": "", "fixes": {}},
+  "chapter_patterns": []
+}
