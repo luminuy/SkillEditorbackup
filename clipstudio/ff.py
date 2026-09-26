@@ -24,17 +24,31 @@ def ffmpeg_bin() -> str:
     if env and os.path.exists(env):
         return env
     found = shutil.which("ffmpeg")
-    if found:
-        return found
+    bundled = None
     try:
         import imageio_ffmpeg  # type: ignore
 
-        return imageio_ffmpeg.get_ffmpeg_exe()
-    except Exception as exc:  # pragma: no cover - depends on env
-        raise FFmpegError(
-            "ffmpeg not found. Install it (apt install ffmpeg / brew install ffmpeg) "
-            "or `pip install imageio-ffmpeg`."
-        ) from exc
+        bundled = imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:  # pragma: no cover - depends on env
+        pass
+    # Prefer the system ffmpeg, but only if it can render captions (libass); a half-finished or
+    # minimal build would silently break Thai subtitles.
+    if found and (bundled is None or _has_filter(found, "ass")):
+        return found
+    if bundled:
+        return bundled
+    raise FFmpegError(
+        "ffmpeg not found. Mac: bash setup-mac.sh --quick (or brew install ffmpeg) · "
+        "Linux: apt install ffmpeg · anywhere: pip install imageio-ffmpeg"
+    )
+
+
+def _has_filter(binary: str, name: str) -> bool:
+    try:
+        out = subprocess.run([binary, "-hide_banner", "-filters"], capture_output=True, text=True, timeout=20).stdout
+        return f" {name} " in out
+    except Exception:  # noqa: BLE001
+        return False
 
 
 @lru_cache(maxsize=1)

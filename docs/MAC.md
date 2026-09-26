@@ -8,6 +8,11 @@ cd SkillEditor
 bash setup-mac.sh
 source .venv/bin/activate          # ทุกครั้งที่เปิด Terminal ใหม่
 ```
+> **ติดตั้งนานมาก / Homebrew ขึ้น `./configure` `make` เยอะ ๆ?** แปลว่า Homebrew กำลังคอมไพล์ ffmpeg จาก source
+> (เกิดกับ Mac Intel หรือ macOS รุ่นที่ Homebrew ไม่มีตัวสำเร็จรูป) อาจใช้ 1–3 ชั่วโมง — กด `Ctrl+C` แล้วใช้
+> `bash setup-mac.sh --quick` แทน: ใช้ ffmpeg สำเร็จรูปจาก pip ไม่ต้องคอมไพล์ เสร็จในไม่กี่นาที
+> (ข้อต่างเดียว: ไม่มี VideoToolbox — draft จะ render ด้วย CPU ช้ากว่าเล็กน้อย)
+
 สคริปต์จะติดตั้ง:
 | อะไร | ทำไม |
 |---|---|
@@ -48,7 +53,8 @@ open projects/<slug>/nle/<slug>.fcpxml     # เปิดใน Final Cut Pro
 ## ปัญหาที่พบบ่อย
 | อาการ | แก้ |
 |---|---|
-| `doctor` บอก filter `ass` MISSING | ffmpeg ไม่ใช่ของ Homebrew — `brew reinstall ffmpeg` แล้วเปิด Terminal ใหม่ |
+| `doctor` บอก filter `ass` MISSING | รัน `bash setup-mac.sh --quick` (ติด ffmpeg สำเร็จรูปที่มี libass) — engine จะเลือกตัวที่ใช้ได้ให้เอง |
+| Homebrew คอมไพล์นานหลายชั่วโมง | `Ctrl+C` แล้ว `bash setup-mac.sh --quick` |
 | FCP ขึ้น missing media | ไฟล์ต้นฉบับถูกย้าย — Relink ไปที่ไฟล์เดิม หรือรัน `nle` ใหม่ |
 | mlx-whisper ช้าครั้งแรก | กำลังดาวน์โหลดโมเดล (~1.6 GB) ครั้งเดียว |
 | ฟอนต์ไทยในแอปไม่ใช่ Kanit | ปิด-เปิดแอปใหม่หลังรัน `setup-mac.sh` |
