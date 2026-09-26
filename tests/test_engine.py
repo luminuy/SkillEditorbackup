@@ -208,8 +208,12 @@ class ProFeatureTests(unittest.TestCase):
         cfg = deep_merge(DEFAULTS, {})
         self.assertEqual(finish.look_chain({"id": "a"}, cfg), "")
         chain = finish.look_chain({"id": "a", "look": "mystic", "sharpen": 0.4}, cfg)
-        self.assertIn("colorbalance", chain)
+        self.assertIn("lut3d=file=", chain)
         self.assertIn("unsharp", chain)
+        cube = chain.split("lut3d=file=")[1].split(":interp")[0]
+        with open(cube) as f:
+            head = [next(f) for _ in range(2)]
+        self.assertIn("LUT_3D_SIZE 36", head[1])
         with self.assertRaises(SystemExit):
             finish.look_chain({"id": "a", "look": "nope"}, cfg)
         self.assertEqual(finish.pick_fps({"fps": "source"}, cfg, {"fps": 59.94}), 60)
