@@ -112,9 +112,16 @@ def whisper(src: str, language: str, model_name: str, prompt: str | None, device
         ) from exc
     compute = "auto"
     model = WhisperModel(model_name, device=device, compute_type=compute)
+    try:  # Silero VAD needs onnxruntime, which has no wheels for some Macs (Intel + new Python)
+        import onnxruntime  # type: ignore  # noqa: F401
+
+        vad = True
+    except ImportError:
+        vad = False
+        print("  (onnxruntime not installed: transcribing without VAD — slightly slower, same result)", flush=True)
     seg_iter, info = model.transcribe(
-        src, language=language or None, word_timestamps=True, vad_filter=True,
-        vad_parameters={"min_silence_duration_ms": 400}, initial_prompt=prompt or None,
+        src, language=language or None, word_timestamps=True, vad_filter=vad,
+        vad_parameters={"min_silence_duration_ms": 400} if vad else None, initial_prompt=prompt or None,
         condition_on_previous_text=False, beam_size=5,
     )
     segs = []
