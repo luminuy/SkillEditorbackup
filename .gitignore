@@ -14,3 +14,5 @@ __pycache__/
 *.pyc
 .DS_Store
 assets/luts/.cache/
+*.zip
+*.bundle
