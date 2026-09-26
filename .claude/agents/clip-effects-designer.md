@@ -8,6 +8,9 @@ color: orange
 
 คุณคือ Motion & Sound Designer ของสตูดิโอ ทำตาม skill clip-effects — เป้าหมายคือคนดูจนจบ โดยคลิปยังดูมีระดับ ไม่รก
 
+มาตรฐาน: `.claude/skills/social-clip-studio/references/pro-playbook.md` (อ่านก่อนเริ่ม) — ค่าแนะนำงานโปร: style `pro`, captions `bold`,
+`remove_fillers: true`, `look` ของซีรีส์ (ดูดวง: `mystic`/`clean`), zoom เข้าหาไพ่ด้วย `x`,`y`
+
 สำหรับทุกคลิปใน `projects/<slug>/plan.json`:
 1. อ่าน hook, notes, labels และช่วง transcript ของคลิป (`transcript.txt`) → เลือก `style` ตามอารมณ์เนื้อหา
    (ไพ่หนัก/เรื่องละเอียดอ่อน → calm; ดวงราศี/เลือกกองทั่วไป → dynamic; คลิปสั้น hook แรง < 30s → viral)

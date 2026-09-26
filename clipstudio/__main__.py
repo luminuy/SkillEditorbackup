@@ -2,7 +2,7 @@
 
   doctor                         check ffmpeg / whisper / fonts / pythainlp
   init VIDEO [--name SLUG]       create projects/SLUG from a source video
-  transcribe SLUG [--srt F] [--model M] [--resync]
+  transcribe SLUG [--srt F] [--model M] [--backend auto|faster|mlx] [--resync]
   fix SLUG ID "text" [ID "text"]  correct transcript segments (keeps timings)
   analyze SLUG                   silences, chapters, clip candidates, risk flags
   frames SLUG [--times 1,2] [--every S] [--count N]   contact sheet to look at
@@ -10,6 +10,7 @@
   plan-check SLUG                validate plan.json (durations, hooks, card ids, styles); exit 1 on errors
   render SLUG [--clip ID ...] [--draft]
   capcut SLUG [--clip ID] [--raw] [--zip]  CapCut kit: clean video + .srt + PNG overlays + sfx + edit guide
+  nle SLUG [--clip ID]           Final Cut Pro / DaVinci Resolve (FCPXML) + Premiere (EDL) + SRT + overlays
   sfx                            list / build the sound-effect library
   snapshot SLUG CLIP             contact sheet of a rendered clip (visual QA)
   thumbnail SLUG --time T --title TEXT [--sub TEXT] [--size 1080x1920] [--clip ID] [--x 0.5]
@@ -51,6 +52,18 @@ def cmd_doctor(_a):
         except ImportError:
             print(f"{mod:12}: missing — pip install -r requirements.txt ({why})")
             ok &= mod != "PIL"
+    import platform
+
+    from . import finish
+
+    if platform.system() == "Darwin":
+        try:
+            __import__("mlx_whisper")
+            mlx_ok = "ok (Apple Silicon GPU)"
+        except ImportError:
+            mlx_ok = "not installed — pip install mlx-whisper (much faster on M-series)"
+        print(f"mlx_whisper : {mlx_ok}")
+        print(f"videotoolbox: {'ok (fast drafts)' if 'h264_videotoolbox' in finish.encoders() else 'not in this ffmpeg'}")
     fonts = sorted(f for f in os.listdir(FONTS_DIR) if f.endswith((".ttf", ".otf")))
     print(f"fonts       : {', '.join(fonts) or 'NONE'}")
     cfg = load_config()
@@ -78,7 +91,8 @@ def cmd_init(a):
 def cmd_transcribe(a):
     from . import transcribe
 
-    transcribe.run(a.slug, srt=a.srt, model=a.model, language=a.lang, device=a.device, resync_only=a.resync)
+    transcribe.run(a.slug, srt=a.srt, model=a.model, language=a.lang, device=a.device, resync_only=a.resync,
+                   backend=a.backend)
 
 
 def cmd_fix(a):
@@ -211,6 +225,12 @@ def cmd_capcut(a):
     capcut.run(a.slug, a.clip, raw=a.raw, draft=a.draft, zip_=a.zip)
 
 
+def cmd_nle(a):
+    from . import nle
+
+    nle.build(a.slug, a.clip)
+
+
 def cmd_sfx(a):
     from . import sfx
 
@@ -282,6 +302,7 @@ def main(argv=None):
     s = sub.add_parser("init"); s.add_argument("video"); s.add_argument("--name"); s.set_defaults(fn=cmd_init)
     s = sub.add_parser("transcribe"); s.add_argument("slug"); s.add_argument("--srt"); s.add_argument("--model")
     s.add_argument("--lang"); s.add_argument("--device", default="auto"); s.add_argument("--resync", action="store_true")
+    s.add_argument("--backend", default="auto", choices=["auto", "faster", "mlx"])
     s.set_defaults(fn=cmd_transcribe)
     s = sub.add_parser("fix"); s.add_argument("slug"); s.add_argument("pairs", nargs="+"); s.set_defaults(fn=cmd_fix)
     s = sub.add_parser("analyze"); s.add_argument("slug"); s.set_defaults(fn=cmd_analyze)
@@ -296,6 +317,7 @@ def main(argv=None):
     s.add_argument("--raw", action="store_true"); s.add_argument("--draft", action="store_true")
     s.add_argument("--zip", action="store_true"); s.set_defaults(fn=cmd_capcut)
     sub.add_parser("sfx").set_defaults(fn=cmd_sfx)
+    s = sub.add_parser("nle"); s.add_argument("slug"); s.add_argument("--clip", action="append"); s.set_defaults(fn=cmd_nle)
     s = sub.add_parser("snapshot"); s.add_argument("slug"); s.add_argument("clip"); s.set_defaults(fn=cmd_snapshot)
     s = sub.add_parser("thumbnail"); s.add_argument("slug"); s.add_argument("--time", type=float, required=True)
     s.add_argument("--title", required=True); s.add_argument("--sub"); s.add_argument("--size", default="1080x1920")

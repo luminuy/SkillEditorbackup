@@ -92,10 +92,11 @@ class AssBuilder:
         cap = dict(self.cfg["captions"])
         cap.update(override or {})
         style = cap.get("style", "highlight")
-        size = cap["size"] * self.k * (1.25 if style == "pop" else 1.0)
+        size = cap["size"] * self.k * {"pop": 1.25, "bold": 1.15}.get(style, 1.0)
         meas = Measurer(self.cfg["fonts"]["caption"], int(size))
-        n_lines = 1 if style == "pop" else max(1, int(cap.get("lines", 1)))
-        return self._cards(words, meas, self.W * cap["max_width"], n_lines, cap["max_card_seconds"])
+        n_lines = 1 if style in ("pop", "bold") else max(1, int(cap.get("lines", 1)))
+        max_words = int(cap.get("max_words") or (3 if style == "bold" else 0))
+        return self._cards(words, meas, self.W * cap["max_width"], n_lines, cap["max_card_seconds"], max_words)
 
     def captions(self, words: list[dict], override: dict | None = None, anim: str = "none",
                  emphasis: list[str] | None = None):
@@ -145,6 +146,8 @@ class AssBuilder:
             flat = [w for ln in lines for w in ln]
             c_start, c_end = card["start"], card["end"]
             pos = f"\\an5\\pos({x:.0f},{y:.0f})"
+            if style == "bold":
+                pos += "\\fscx115\\fscy115\\bord" + str(round(cap["outline"] * self.k * 1.3, 1))
             if style == "plain":
                 txt = "\\N".join("".join(paint(v, False) for v in ln).strip() for ln in lines)
                 self.add(c_start, c_end, "Caption", f"{{{pos}{enter}}}{txt}", 2)
@@ -164,6 +167,19 @@ class AssBuilder:
                     self.add(a, b, "Caption", f"{{{pos}{enter if i == 0 else ''}}}" + body, 2)
 
     # ---- effects layers -----------------------------------------------------
+    def vignette(self, duration: float, strength: float = 0.55):
+        """Soft darkened edges (static -> libass renders it once and caches it)."""
+        W, H, k = self.W, self.H, self.k
+        a = f"&H{int(255 * (1 - strength)):02X}&"
+        b = int(0.07 * max(W, H))
+        bars = [f"m {-b} {-b} l {W + b} {-b} {W + b} {int(H * 0.06)} {-b} {int(H * 0.06)}",
+                f"m {-b} {int(H * 0.94)} l {W + b} {int(H * 0.94)} {W + b} {H + b} {-b} {H + b}",
+                f"m {-b} {-b} l {int(W * 0.05)} {-b} {int(W * 0.05)} {H + b} {-b} {H + b}",
+                f"m {int(W * 0.95)} {-b} l {W + b} {-b} {W + b} {H + b} {int(W * 0.95)} {H + b}"]
+        for shape in bars:
+            self.add(0, duration, "Bar", f"{{\\an7\\pos(0,0)\\p1\\c&H000000&\\alpha{a}\\bord0\\shad0"
+                                         f"\\blur{int(90 * k)}}}{shape}{{\\p0}}", 0)
+
     def fx(self, events: list[dict]):
         """Overlay effects resolved by effects.build_events: flash, flash-strong, sparkle, stars, glow."""
         import random as _r
@@ -210,7 +226,7 @@ class AssBuilder:
                            f"\\t({int(life * 0.25)},{life},\\fscx30\\fscy30\\frz{rot + 120}\\alpha&HFF&)")
                     self.add(st, st + life / 1000, "Bar", f"{{{tag}}}{star}{{\\p0}}", 8)
 
-    def _cards(self, words, meas, max_px, n_lines, max_secs):
+    def _cards(self, words, meas, max_px, n_lines, max_secs, max_words=0):
         cards_out, cur_lines, cur = [], [], []
 
         def flush():
@@ -229,8 +245,9 @@ class AssBuilder:
                 flat_prev = (cur_lines[-1] if cur_lines and not cur else cur)[-1]
                 first = (cur_lines[0] if cur_lines else cur)[0]
                 gap = w["start"] - flat_prev["end"]
+                n_in_card = sum(len(ln) for ln in cur_lines) + len(cur)
                 if (gap > 0.65 or w["end"] - first["start"] > max_secs or w.get("seg") != flat_prev.get("seg")
-                        or flat_prev["text"].endswith(SENTENCE_END)):
+                        or flat_prev["text"].endswith(SENTENCE_END) or (max_words and n_in_card >= max_words)):
                     flush()
             line_txt = "".join(v["text"] for v in cur) + w["text"]
             if cur and meas.width(line_txt.strip()) > max_px:

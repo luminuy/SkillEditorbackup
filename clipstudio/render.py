@@ -14,7 +14,7 @@ import os
 import re
 import time
 
-from . import effects, ff, sfx
+from . import effects, ff, finish, sfx
 from .captions import AssBuilder, resolve_label
 from .config import FONTS_DIR, FORMATS, ROOT, Project, load_config, read_json, write_json
 from .timeline import Timeline, subtract
@@ -108,6 +108,21 @@ def load_plan(project: Project) -> dict:
     return plan
 
 
+def _filler_holes(project: Project, cfg: dict) -> list[dict]:
+    """Word intervals that are pure fillers (เอ่อ, อืม, um …) — cut tightly, like a pro editor would."""
+    tpath = project.path("transcript.json")
+    fillers = {f.strip().lower() for f in cfg["edit"].get("fillers", [])}
+    if not fillers or not os.path.exists(tpath):
+        return []
+    holes = []
+    for seg in read_json(tpath)["segments"]:
+        for w in seg.get("words") or []:
+            t = w["text"].strip().lower().strip(".,!?…")
+            if t in fillers:
+                holes.append({"start": w["start"] - 0.02, "end": w["end"] + 0.02})
+    return holes
+
+
 def _clip_words(project: Project, tl: Timeline) -> list[dict]:
     tpath = project.path("transcript.json")
     if not os.path.exists(tpath):
@@ -138,6 +153,10 @@ def prepare_clip(project: Project, clip: dict, cfg: dict, meta: dict) -> dict:
     pieces = [dict(s) for s in segments]
     if remove_sil and os.path.exists(project.path("silences.json")):
         pieces = subtract(segments, read_json(project.path("silences.json")), ed["pad"], ed["min_piece"])
+    if clip.get("remove_fillers", ed.get("remove_fillers", False)):
+        holes = _filler_holes(project, cfg)
+        if holes:
+            pieces = subtract(pieces, holes, 0.0, ed["min_piece"])
     if not pieces:
         raise SystemExit(f"clip {clip['id']}: nothing left after silence removal")
     seen = set()
@@ -189,6 +208,8 @@ def build_ass(prep: dict, cfg: dict, W: int, H: int, text_layers: bool = True) -
         if clip.get("disclaimer", cfg["disclaimer"].get("burn_in")):
             ass.disclaimer(cfg["disclaimer"]["text"], cfg["disclaimer"]["seconds"])
         ass.progress_bar(total)
+    if st.get("vignette") and clip.get("vignette", True):
+        ass.vignette(total)
     ass.fx(prep["events"]["ass"])
     return ass
 
@@ -199,8 +220,10 @@ def render_clip(project: Project, clip: dict, cfg: dict, meta: dict, draft: bool
     t0 = time.time()
     src = project.source()
     W, H = FORMATS[clip.get("format", "vertical")]
+    if draft:  # previews render at half size: ~4x faster, same layout (ASS scales with the canvas)
+        W, H = _even(W / 2), _even(H / 2)
     ed = cfg["edit"]
-    fps = int(clip.get("fps") or ed["fps"])
+    fps = finish.pick_fps(clip, cfg, meta)
     if variant == "raw":
         clip = raw_clip(clip)
     prep = prepare_clip(project, clip, cfg, meta)
@@ -215,31 +238,56 @@ def render_clip(project: Project, clip: dict, cfg: dict, meta: dict, draft: bool
     with open(project.path(ass_rel), "w", encoding="utf-8") as f:
         f.write(build_ass(prep, cfg, W, H, text_layers=(variant == "final")).render())
 
-    # --- inputs ---------------------------------------------------------------
+    # --- inputs: one seek per segment (never one split across out-of-order segments: that deadlocks) ---
     pieces = tl.pieces
-    win_a = max(0.0, min(p["start"] for p in pieces) - 1.0)
-    win_b = max(p["end"] for p in pieces) + 0.5
     has_audio = meta.get("has_audio", True)
-    inputs = ["-ss", f"{win_a:.3f}", "-t", f"{win_b - win_a:.3f}", "-i", src]
-    next_idx = 1
+    seg_ids = []
+    for p in pieces:
+        if p["_seg"] not in seg_ids:
+            seg_ids.append(p["_seg"])
+    inputs, g = [], []
+    seg_input, seg_offset = {}, {}
+    for k, sid in enumerate(seg_ids):
+        mine = [p for p in pieces if p["_seg"] == sid]
+        a0 = max(0.0, min(p["start"] for p in mine) - 0.5)
+        b0 = max(p["end"] for p in mine) + 0.3
+        inputs += ["-ss", f"{a0:.3f}", "-t", f"{b0 - a0:.3f}", "-i", src]
+        seg_input[sid], seg_offset[sid] = k, a0
+    next_idx = len(seg_ids)
     n = len(pieces)
-    g = [f"[0:v]split={n}" + "".join(f"[vs{i}]" for i in range(n)) if n > 1 else "[0:v]null[vs0]"]
     if has_audio:
-        g.append(f"[0:a]asplit={n}" + "".join(f"[as{i}]" for i in range(n)) if n > 1 else "[0:a]anull[as0]")
+        for sid in seg_ids:
+            idxs = [i for i, p in enumerate(pieces) if p["_seg"] == sid]
+            k = seg_input[sid]
+            if len(idxs) > 1:
+                g.append(f"[{k}:a]asplit={len(idxs)}" + "".join(f"[as{i}]" for i in idxs))
+            else:
+                g.append(f"[{k}:a]anull[as{idxs[0]}]")
     else:
-        inputs += ["-f", "lavfi", "-t", f"{win_b - win_a:.3f}", "-i", "anullsrc=r=48000:cl=stereo"]
-        g.append(f"[{next_idx}:a]asplit={n}" + "".join(f"[as{i}]" for i in range(n)) if n > 1 else f"[{next_idx}:a]anull[as0]")
+        # silent source: one null audio input trimmed per piece on the *output* clock (offset 0)
+        span = sum(p["end"] - p["start"] for p in pieces) + 1
+        inputs += ["-f", "lavfi", "-t", f"{span:.3f}", "-i", "anullsrc=r=48000:cl=stereo"]
+        g.append(f"[{next_idx}:a]asplit={n}" + "".join(f"[an{i}]" for i in range(n)) if n > 1 else f"[{next_idx}:a]anull[an0]")
+        for i, p in enumerate(pieces):
+            g.append(f"[an{i}]atrim=0:{p['end'] - p['start']:.3f},asetpts=PTS-STARTPTS[as{i}]")
         next_idx += 1
+    for sid in seg_ids:
+        idxs = [i for i, p in enumerate(pieces) if p["_seg"] == sid]
+        k = seg_input[sid]
+        g.append(f"[{k}:v]split={len(idxs)}" + "".join(f"[vs{i}]" for i in idxs) if len(idxs) > 1
+                 else f"[{k}:v]null[vs{idxs[0]}]")
 
     # --- pieces ---------------------------------------------------------------
     for i, p in enumerate(pieces):
-        a, b = p["start"] - win_a, p["end"] - win_a
+        off = seg_offset[p["_seg"]]
+        a, b = p["start"] - off, p["end"] - off
         d = b - a
         g.append(f"[vs{i}]trim=start={a:.3f}:end={b:.3f},setpts=PTS-STARTPTS[vt{i}]")
         g.append(reframe_chain(f"vt{i}", f"vr{i}", sw, sh, W, H, spec, p, f"p{i}"))
         g.append(f"[vr{i}]fps={fps},setsar=1,format=yuv420p,settb=1/{fps * 1000}[v{i}]")
         fade = min(0.02, d / 4)
-        g.append(f"[as{i}]atrim=start={a:.3f}:end={b:.3f},asetpts=PTS-STARTPTS,"
+        aa, ab = (a, b) if has_audio else (0.0, d)
+        g.append(f"[as{i}]atrim=start={aa:.3f}:end={ab:.3f},asetpts=PTS-STARTPTS,"
                  f"aformat=sample_rates=48000:channel_layouts=stereo,"
                  f"afade=t=in:d={fade:.3f},afade=t=out:st={d - fade:.3f}:d={fade:.3f}[a{i}]")
 
@@ -269,14 +317,15 @@ def render_clip(project: Project, clip: dict, cfg: dict, meta: dict, draft: bool
 
     # --- video post: speed, motion, vignette, glitch, overlay text/fx ---------------------
     vchain = []
+    look = finish.look_chain(clip, cfg, draft)
+    if look:
+        vchain.append(look)
     if speed != 1.0:
         vchain.append(f"setpts=PTS/{speed}")
     oversample = 1 if draft else int(cfg.get("effects", {}).get("motion_oversample", 2))
     zp = effects.zoompan_filter(ev, st, W, H, fps, total, oversample)
     if zp:
         vchain.append(zp)
-    if st.get("vignette") and clip.get("vignette", True):
-        vchain.append("vignette=angle=PI/5:mode=forward")
     gl = effects.glitch_filter(ev)
     if gl:
         vchain.append(gl)
@@ -339,9 +388,7 @@ def render_clip(project: Project, clip: dict, cfg: dict, meta: dict, draft: bool
     tmp = os.path.join("work", f"{clip['id']}{tag}.pre.mp4")
     if out_rel is None:
         out_rel = os.path.join("renders", f"{clip['id']}{tag}{'.draft' if draft else ''}.mp4")
-    venc = (["-c:v", "libx264", "-preset", "ultrafast", "-crf", "28"] if draft else
-            ["-c:v", "libx264", "-preset", ed["preset"], "-crf", str(ed["crf"]), "-profile:v", "high",
-             "-g", str(fps * 2), "-bf", "2"])
+    venc = finish.video_encoder_args(cfg, fps, draft)
     graph_args = ["-filter_complex", graph]
     if len(graph) > 60000:
         gpath = project.path("work", f"{clip['id']}{tag}.graph.txt")

@@ -2,7 +2,7 @@
 name: clip-video-editor
 description: เรนเดอร์คลิปจาก plan.json ด้วย clipstudio engine (draft → ตรวจ snapshot → แก้ → final) รวมถึงแก้ตำแหน่งซับ, reframe, เสียง, ตามที่ QA ตีกลับ. ใช้เมื่อมี plan.json แล้วและต้องการไฟล์วิดีโอ.
 tools: Bash, Read, Edit, Write, Glob
-skills: clip-render, clip-effects, clip-capcut
+skills: clip-render, clip-effects, clip-capcut, clip-nle
 color: green
 ---
 
@@ -14,6 +14,8 @@ color: green
 4. แก้ปัญหาที่เห็น (plan.json สำหรับคลิปเดียว; channel.config.json เฉพาะเมื่อปัญหาเป็นทุกคลิปและผู้กำกับอนุญาต)
 5. render final **ทุกคลิป**: `python3 -m clipstudio render <slug>` (หรือ `--clip <id> ...`) แล้วลบ `renders/*.draft.mp4` ที่ไม่ใช้แล้ว
 6. ถ้าผู้กำกับขอ CapCut: `python3 -m clipstudio capcut <slug> [--raw] [--zip]` (skill clip-capcut)
+7. ถ้าขอ Final Cut Pro / DaVinci Resolve / Premiere: `python3 -m clipstudio nle <slug>` (skill clip-nle)
+8. render final สำหรับส่งจริงแนะนำ `edit.quality: "max"` — เช็ก look/สีผิวใน snapshot ก่อน
 
 ห้ามเปลี่ยนการเลือกช่วง/hook เองโดยไม่แจ้ง — ถ้าคิดว่าช่วงไม่ดี ให้เสนอผู้กำกับ
 ตอบกลับ: ตาราง id · ความยาว · วินาทีที่ตัดเงียบ · สิ่งที่แก้ · path ไฟล์ final

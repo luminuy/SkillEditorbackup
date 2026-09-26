@@ -15,7 +15,7 @@ python3 -m clipstudio render <slug> --draft                 # เร็ว (ultr
 python3 -m clipstudio snapshot <slug> <clip-id>             # แล้ว Read projects/<slug>/work/snap_<id>.jpg
 python3 -m clipstudio render <slug> --clip <id> [--clip <id2>]   # final เฉพาะที่ผ่าน
 ```
-ทดสอบแล้ว (CPU 4 คอร์, คลิป ~24s): ไม่มีเอฟเฟกต์ ~11s draft / ~17s final · style dynamic ~25s draft / ~45s final
+ทดสอบแล้ว (cloud CPU 4 คอร์, คลิป ~24s, style dynamic + look mystic): draft ~17s (ครึ่งความละเอียด 540x960 — layout เหมือน final) / final ~50s · บน Mac M-series เร็วกว่านี้
 **QA/review ใช้เฉพาะไฟล์ final** — งานนี้ยังไม่เสร็จจนกว่าทุกคลิปจะมี `renders/<id>.mp4`
 
 snapshot ใช้เวลาตายตัว (0.6s, 25/50/75%, ท้าย) อาจพลาดจังหวะเปิดไพ่/เอฟเฟกต์ → ดูเฉพาะจุดด้วย
@@ -38,6 +38,17 @@ snapshot ใช้เวลาตายตัว (0.6s, 25/50/75%, ท้าย)
 | เสียงเบา/ดังไม่เท่ากัน | engine ทำ two-pass loudnorm ให้แล้ว (-14 LUFS); ถ้าเสียงก้อง/ซ่ามาก ปิด `voice_enhance` แล้วลองเทียบ |
 | เพลงกลบเสียงพูด | `music_volume` 0.12 → 0.08 |
 | ภาพต้นฉบับแนวตั้งอยู่แล้ว | ใช้ `reframe: {"mode":"crop"}` (ไม่มีขอบเบลอ) |
+
+## Finishing ระดับโปร (ต่อคลิปใน plan หรือค่าเริ่มต้นใน `channel.config.json`)
+| ฟิลด์ | ค่า | ใช้เมื่อ |
+|---|---|---|
+| `look` | `clean` · `warm` · `mystic` · `moody` · `vibrant` | เกรดสีทั้งซีรีส์ให้เหมือนกัน (ดูดวง: `mystic` หรือ `clean`) — `finish.look` ใน config |
+| `lut` | `assets/luts/x.cube` | มี LUT ของช่องอยู่แล้ว (ใช้ LUT เดียวกับใน Final Cut/Resolve) |
+| `sharpen` | 0.3–0.6 | ฟุตเทจมือถือ/ซูมเยอะ · `denoise: true` เมื่อแสงน้อย (ช้าลง) |
+| `remove_fillers` | true | ตัด เอ่อ/อืม/อ่า ออกแบบเนียน (รายการคำใน `edit.fillers`) |
+| `fps` | `"source"` | กล้อง 60fps → คงความลื่น (render ช้ากว่า) |
+| `edit.quality` | `"max"` | render final ส่งจริง (CRF 16, preset slow) |
+| `edit.encoder` | `auto` · `x264` · `videotoolbox` | บน Mac: auto = draft ใช้ VideoToolbox (เร็วมาก), final ใช้ x264 (คุณภาพดีสุด) |
 
 ## ข้อควรรู้ของ engine
 - ทุกข้อความบนจอถูกรวมเป็นไฟล์ `.ass` เดียว (`work/<id>.ass`) — แก้ด้วยมือได้เพื่อทดลอง แต่จะถูกเขียนทับเมื่อ render ใหม่

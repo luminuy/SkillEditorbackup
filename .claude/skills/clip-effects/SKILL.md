@@ -14,6 +14,7 @@ engine ใส่เอฟเฟกต์ให้อัตโนมัติจ�
 |---|---|---|
 | `calm` | ลึกลับ อบอุ่น ช้า — ข้อความจากจักรวาล, ฮีลใจ | push-in ช้า 5%, crossfade 0.45s, glow + ประกายตอนเปิดไพ่, chime, ซับ fade, vignette |
 | `dynamic` (ค่าเริ่มต้น) | มีพลัง อ่านง่าย — ดวงราศี, เลือกกอง | push-in 6%, transition zoom, punch-in สลับทุก jump cut, แฟลช+ประกาย+punch ตอนเปิดไพ่, whoosh/sparkle/pop, ซับ pop, ไม่นิ่งเกิน 4s |
+| `pro` | สไตล์ช่องใหญ่: คม สะอาด ไม่รก — ทุกประเภท | push 4%, crossfade สั้น 0.2s, punch-in สลับทุก jump cut, punch+ประกายตอนเปิดไพ่, punch ที่คำสำคัญ, ไม่นิ่งเกิน 3s, ไม่มี vignette/pop เสียงเยอะ |
 | `viral` | เร็ว เร้าใจ — hook แรง ๆ, คลิป < 30s | push 8%, whip, punch แรงขึ้น, แฟลช+shake+ประกาย ตอนเปิดไพ่, impact+sparkle, ซับ bounce, punch ที่คำสำคัญ, ไม่นิ่งเกิน 2.5s |
 | `none` | ตัดเปล่า ๆ | ไม่มีเอฟเฟกต์ (ยังมีซับ/hook/label) |
 
@@ -41,6 +42,7 @@ transition แบบ overlap (ทุกตัวยกเว้นกลุ่�
 "fx": [
   {"at": 95.5, "type": "stars", "duration": 1.6, "sfx": "shimmer"},   // ประกายดาวทั้งจอ + เสียง
   {"at": 71.2, "type": "zoom", "duration": 2.0, "amount": 0.15},      // ซูมค้าง (เน้นประโยคสำคัญ)
+  {"at": 72.5, "type": "zoom", "amount": 0.25, "x": 0.3, "y": 0.6},  // ซูมเข้าหาจุด (เช่น ไพ่บนโต๊ะ) — x,y = สัดส่วนของเฟรมผลลัพธ์
   {"at": 60.0, "type": "punch"}, {"at": 62.3, "type": "shake"}, {"at": 64.0, "type": "glitch"},
   {"at": 30.1, "type": "flash-strong"}, {"at": 40.0, "type": "glow", "y": 0.4}
 ]
@@ -61,7 +63,9 @@ types: `punch` (ซูมเด้ง) · `zoom` (ซูมค้าง) · `sha
 ## 5. ซับให้น่าดู
 - `"caption_anim"`: `none` · `fade` · `pop` · `bounce` (ค่าเริ่มต้นตาม style)
 - คำสำคัญเป็นสีเด่น (`brand.emphasis`): รายการใน preset → `effects.emphasis_words` + ต่อคลิป `"emphasis": ["เนื้อคู่", "The Sun"]`
+- สไตล์ซับ `bold` (2–3 คำต่อการ์ด ตัวใหญ่ ขอบหนา — แบบช่องใหญ่) + style `pro` = มาตรฐานงานโปร · `max_words` กำหนดจำนวนคำต่อการ์ดได้กับทุกสไตล์
 - สไตล์ซับ `pop` (คำเดียวใหญ่) + style `viral` = พลังสูงสุด; `karaoke` 2 บรรทัด + `calm` = นุ่มนวล
+- หลักการระดับโปรทั้งหมด: `.claude/skills/social-clip-studio/references/pro-playbook.md`
 
 ## 6. หลักจังหวะ (ทำไมถึงได้ผล)
 - **ภาพต้องเปลี่ยนทุก 2–4 วินาที** (ตัด, ซูม, ป้าย, เอฟเฟกต์) — engine เติม punch ให้เองเมื่อนิ่งนานเกิน `max_static`

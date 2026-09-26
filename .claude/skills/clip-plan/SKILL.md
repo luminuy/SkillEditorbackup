@@ -8,6 +8,8 @@ description: เลือกช่วงวิดีโอที่จะกล�
 อินพุต: `projects/<slug>/transcript.txt`, `analysis.md` (chapters, candidates, risk flags), `project.json`
 เอาต์พุต: `projects/<slug>/plan.json` (schema เต็ม: `.claude/skills/social-clip-studio/references/engine-cli.md`)
 
+มาตรฐานงาน: อ่าน `.claude/skills/social-clip-studio/references/pro-playbook.md` (โครงเรื่อง, hook, re-hook, loop) ก่อนเลือกช่วง
+
 ## ขั้นตอน
 1. อ่าน `analysis.md` → รู้โครง (chapters) และจุดเสี่ยง
 2. อ่าน `transcript.txt` ทั้งหมด — heuristic score เป็นแค่จุดเริ่ม คุณคือบรรณาธิการตัวจริง

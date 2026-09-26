@@ -37,6 +37,7 @@ description: ผู้กำกับตัดต่อคลิปสั้น�
 7. QA         clip-qa-reviewer → ถ้า fail ส่งกลับ agent ที่เกี่ยวข้อง (วนได้ ≤ 2 รอบ)
 8. deliver    python3 -m clipstudio review <slug>  → review.html, schedule.csv, publish/<clip>/<platform>.txt
    (+ CapCut) python3 -m clipstudio capcut <slug> [--zip]  → projects/<slug>/capcut/<id>/  (skill clip-capcut)
+   (+ NLE)    python3 -m clipstudio nle <slug>  → Final Cut Pro / DaVinci Resolve / Premiere  (skill clip-nle)
 ```
 
 การส่งงานให้เอเจนต์: เรียกด้วย Agent tool (`subagent_type` = ชื่อเอเจนต์) ใส่ **slug, path, เป้าหมาย, ข้อจำกัด** ให้ครบ
@@ -46,7 +47,7 @@ description: ผู้กำกับตัดต่อคลิปสั้น�
 - ไฟล์วิดีโออยู่ไหน (local path / Google Drive — ใช้ Google Drive connector ดาวน์โหลดเข้า `input/`)
 - จำนวนคลิปที่อยากได้ และแพลตฟอร์ม (ค่าเริ่มต้นจาก `channel.config.json`)
 - สไตล์ซับ (highlight / karaoke / pop / plain) และจังหวะ (calm / dynamic / viral) — ถ้าไม่ระบุใช้ค่าใน config
-- จะโพสต์ไฟล์สำเร็จจากเราเลย หรือจะไปแต่งต่อใน **CapCut** (ถ้า CapCut → ส่ง CapCut kit ด้วย)
+- จะโพสต์ไฟล์สำเร็จจากเราเลย หรือจะไปแต่งต่อใน **CapCut** / **Final Cut Pro** / **DaVinci Resolve** / **Premiere** (ส่ง kit/ไฟล์ NLE ด้วย)
 - ถ้า `channel.config.json` ยังเป็นค่า placeholder (`@yourtarotchannel`) ให้ถามชื่อช่อง/handle ก่อน render final
 
 ถ้าผู้ใช้ให้แค่ไฟล์แล้วบอก "จัดการเลย" → ใช้ค่าเริ่มต้นทั้งหมด แล้วบอกสิ่งที่สมมติไว้ตอนส่งงาน
@@ -59,6 +60,16 @@ description: ผู้กำกับตัดต่อคลิปสั้น�
 | เลือกกอง | 1 คลิปเชิญเลือกกอง + 1 คลิปต่อกอง (ตั้ง hook "กอง 1 …") |
 | ไลฟ์ยาว / Q&A | 5–10 ไฮไลต์ที่ตอบคำถามจบในตัว |
 | คลิปพูดทั่วไป / พอดแคสต์ | 3–8 ช่วงที่มีประเด็นเดียวชัด + ประโยคเปิดแรง |
+
+## มาตรฐานงาน: ระดับช่อง 10 ล้าน followers
+ทุกเอเจนต์ที่ตัดสินใจด้านครีเอทีฟ (producer, effects-designer, editor, QA) ต้องอ่าน
+`references/pro-playbook.md` — โครง Hook→Context→Build→Re-hook→Payoff→Loop, จังหวะ, ซับ, เสียง, สี, checklist
+ค่าแนะนำสำหรับงานระดับโปร: `style: "pro"` (หรือ dynamic/viral ตามเนื้อหา), `captions.style: "bold"`, `remove_fillers: true`,
+`look: "mystic"` (ดูดวง) หรือ `clean`, `sharpen: 0.4`, `edit.quality: "max"` ตอน render final, `fps: "source"` ถ้ากล้อง 60fps
+
+## macOS
+ผู้ใช้ตัดต่อบน Mac เป็นหลัก: ติดตั้งด้วย `bash setup-mac.sh` (Homebrew ffmpeg + VideoToolbox, mlx-whisper บน Apple Silicon — ถอดเสียงเร็วกว่า CPU หลายเท่า,
+ฟอนต์ Kanit ลงเครื่อง) · เปิดผลลัพธ์ด้วย `open projects/<slug>/review.html` · คู่มือ: `docs/MAC.md`
 
 niche ดูดวง: โหลดสกิล `tarot-reading-knowledge` (ข้อมูลไพ่ 78 ใบ, hooks, แฮชแท็ก, compliance)
 niche อื่น: สร้าง preset ใหม่ใน `presets/<niche>.json` (ดู `presets/general.json`) แล้วตั้ง `"preset"` ใน `channel.config.json`

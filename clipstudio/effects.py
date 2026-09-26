@@ -37,6 +37,10 @@ STYLES: dict[str, dict] = {
                 "cut_punch": 0.08, "reveal_fx": ["flash", "sparkle", "punch"],
                 "sfx": {"transition": "whoosh", "reveal": "sparkle", "hook": "pop", "cta": "pop"},
                 "caption_anim": "pop", "vignette": True, "emphasis_punch": False, "max_static": 4.0},
+    "pro": {"motion": "push", "motion_amount": 0.04, "transition": "crossfade", "transition_duration": 0.2,
+            "cut_punch": 0.1, "reveal_fx": ["punch", "sparkle"],
+            "sfx": {"transition": "whoosh-soft", "reveal": "sparkle", "hook": None, "cta": None},
+            "caption_anim": "pop", "vignette": False, "emphasis_punch": True, "max_static": 3.0},
     "viral": {"motion": "push", "motion_amount": 0.08, "transition": "whip", "transition_duration": 0.25,
               "cut_punch": 0.1, "reveal_fx": ["flash", "shake", "sparkle", "punch"],
               "sfx": {"transition": "whoosh", "reveal": "impact", "reveal2": "sparkle", "hook": "pop", "cta": "pop"},
@@ -126,9 +130,11 @@ def build_events(clip: dict, st: dict, tl, labels_out: list[dict], total: float,
     def add_fx(kind, t, dur=None, **kw):
         t = max(0.0, min(total - 0.05, t))
         if kind == "punch":
-            ev["zoom"].append({"t": t, "dur": dur or 0.45, "amount": kw.get("amount", 0.12), "shape": "kick"})
+            ev["zoom"].append({"t": t, "dur": dur or 0.45, "amount": kw.get("amount", 0.12), "shape": "kick",
+                               "x": kw.get("x"), "y": kw.get("y")})
         elif kind == "zoom":
-            ev["zoom"].append({"t": t, "dur": dur or 2.0, "amount": kw.get("amount", 0.15), "shape": "hold"})
+            ev["zoom"].append({"t": t, "dur": dur or 2.0, "amount": kw.get("amount", 0.15), "shape": "hold",
+                               "x": kw.get("x"), "y": kw.get("y")})
         elif kind == "shake":
             ev["shake"].append({"t": t, "dur": dur or 0.4, "amount": kw.get("amount", 14)})
         elif kind == "glitch":
@@ -239,12 +245,19 @@ def zoompan_filter(ev: dict, st: dict, W: int, H: int, fps: int, total: float, o
     for pz in ev["pieces_zoom"]:
         if pz["amount"]:
             terms.append(f"{pz['amount']}*between(it,{pz['t0']:.3f},{pz['t1']:.3f})")
+    cx_terms, cy_terms = [], []
     for z in ev["zoom"]:
         t0, d, a = z["t"], z["dur"], z["amount"]
         if z["shape"] == "kick":  # jump in, ease back out
-            terms.append(f"{a}*between(it,{t0:.3f},{t0 + d:.3f})*pow(1-(it-{t0:.3f})/{d:.3f},2)")
+            env = f"between(it,{t0:.3f},{t0 + d:.3f})*pow(1-(it-{t0:.3f})/{d:.3f},2)"
         else:  # ease in 0.2s, hold, ease out 0.2s
-            terms.append(f"{a}*between(it,{t0:.3f},{t0 + d:.3f})*min(1,min((it-{t0:.3f})/0.2,({t0 + d:.3f}-it)/0.2))")
+            env = f"between(it,{t0:.3f},{t0 + d:.3f})*min(1,min((it-{t0:.3f})/0.2,({t0 + d:.3f}-it)/0.2))"
+        terms.append(f"{a}*{env}")
+        # zoom towards a point (fractions of the frame), e.g. the card on the table
+        if z.get("x") is not None:
+            cx_terms.append(f"{float(z['x']) - 0.5:.3f}*{env}")
+        if z.get("y") is not None:
+            cy_terms.append(f"{float(z['y']) - 0.5:.3f}*{env}")
     shake_x, shake_y = [], []
     for s in ev["shake"]:
         t0, d, a = s["t"], s["dur"], s["amount"] * oversample
@@ -255,8 +268,10 @@ def zoompan_filter(ev: dict, st: dict, W: int, H: int, fps: int, total: float, o
     if not terms:
         return None
     z = "1+" + "+".join(terms)
-    x = "iw/2-iw/zoom/2" + ("+" + "+".join(shake_x) if shake_x else "")
-    y = "ih/2-ih/zoom/2" + ("+" + "+".join(shake_y) if shake_y else "")
+    cx = "(0.5" + "".join("+" + c for c in cx_terms) + ")"
+    cy = "(0.5" + "".join("+" + c for c in cy_terms) + ")"
+    x = f"iw*{cx}-iw/zoom/2" + ("+" + "+".join(shake_x) if shake_x else "")
+    y = f"ih*{cy}-ih/zoom/2" + ("+" + "+".join(shake_y) if shake_y else "")
     pre = f"scale={W * oversample}:{H * oversample}:flags=bicubic," if oversample > 1 else ""
     return f"{pre}zoompan=z='{z}':x='{x}':y='{y}':d=1:s={W}x{H}:fps={fps}"
 

@@ -9,7 +9,8 @@ color: purple
 คุณคือ Story Producer — ตัดสินใจว่าคลิปไหนควรมีอยู่ และแต่ละคลิปเล่าเรื่องอย่างไร ทำตาม skill clip-plan
 
 ขั้นตอน:
-0. schema ของ plan.json และคำสั่งทั้งหมด: `.claude/skills/social-clip-studio/references/engine-cli.md` (อ่านก่อนเขียน)
+0. schema ของ plan.json และคำสั่งทั้งหมด: `.claude/skills/social-clip-studio/references/engine-cli.md` และมาตรฐานงาน
+   `.claude/skills/social-clip-studio/references/pro-playbook.md` (อ่านทั้งสองไฟล์ก่อนเขียน)
 1. อ่าน `projects/<slug>/analysis.md`, `transcript.txt`, และ `trends.md` (ถ้ามี) — เจอคำผิดให้ `fix` ก่อน; หาเวลาคำด้วย `find`
 2. ดูเฟรม: `python3 -m clipstudio frames <slug> --count 16` → Read `work/frames_source.jpg` (และ `--times` เฉพาะจุดเปิดไพ่)
 3. เขียน `projects/<slug>/plan.json` ตามจำนวน/แพลตฟอร์มที่ผู้กำกับกำหนด (ถ้าไม่กำหนด: ทุก chapter ที่จบในตัว + ไฮไลต์ที่ดีที่สุด ≤ 12 คลิป)

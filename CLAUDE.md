@@ -11,9 +11,10 @@ subagent เรียก subagent ต่อไม่ได้ — การป�
 - `clipstudio/` — engine (Python + ffmpeg + faster-whisper + libass). CLI: `python3 -m clipstudio <cmd>` จาก repo root
   - `render.py` ตัด/reframe/concat+xfade/motion/sfx/loudness · `captions.py` ASS overlay ทุกชั้น (+ flash/sparkle/glow) · `textutil.py` ตัดคำไทย+วัดความกว้าง
   - `effects.py` สไตล์จังหวะ calm/dynamic/viral → events (transition, zoompan, shake, glitch, sfx) · `sfx.py` คลังเสียงสังเคราะห์ · `capcut.py` ชุดส่งต่อ CapCut
+  - `finish.py` look/LUT/sharpen/denoise, fps, encoder (x264 / VideoToolbox) · `nle.py` FCPXML + EDL hand-off
   - `analyze.py` silence/chapters/candidates/risk flags · `transcribe.py` whisper/srt · `qa.py` · `review.py` · `thumbnail.py`
   - `data/cards.json` ไพ่ 78 ใบ (ไทย+อังกฤษ) · `data/zodiac.json` ราศี/วันเกิด/กอง
-- `.claude/skills/` — social-clip-studio (ผู้กำกับ), clip-transcribe, clip-plan, clip-effects, clip-render, clip-capcut, clip-thumbnail, clip-copywriting, clip-qa, tarot-reading-knowledge
+- `.claude/skills/` — social-clip-studio (ผู้กำกับ; references/pro-playbook.md = มาตรฐานงาน), clip-transcribe, clip-plan, clip-effects, clip-render, clip-capcut, clip-nle, clip-thumbnail, clip-copywriting, clip-qa, tarot-reading-knowledge
 - `.claude/agents/` — clip-transcriber, clip-trend-scout, clip-story-producer, clip-effects-designer, clip-video-editor, clip-copywriter, clip-thumbnail-artist, clip-qa-reviewer
 - `channel.config.json` — brand kit ของช่อง (merge ทับ `presets/<preset>.json` ทับค่า default ใน `clipstudio/config.py`)
 - `projects/<slug>/` — งานแต่ละวิดีโอ (ไม่ commit) · `input/` — ไฟล์ต้นฉบับ (ไม่ commit) · `assets/fonts` — Kanit (OFL)
@@ -25,5 +26,7 @@ subagent เรียก subagent ต่อไม่ได้ — การป�
 - เวลาใน plan (`segments`, `labels.at`, `fx.at`, `sfx.at`) เป็นเวลาของไฟล์ต้นฉบับเสมอ; `Timeline` แปลงเป็นเวลาในคลิป (รวม overlap ของ xfade)
 - xfade ต้องการ timebase เท่ากันทุก input — กลุ่มที่ concat แล้วต้อง `settb` ก่อนเข้า xfade
 - ffmpeg `ass` filter ไม่เขียน alpha → PNG โปร่งใสใช้ difference matting (ดำ/ขาว) ใน `capcut._png_overlay`
+- ผู้ใช้หลักทำงานบน macOS: อย่าใช้คำสั่งเฉพาะ Linux ใน docs; ติดตั้งด้วย `setup-mac.sh` (docs/MAC.md)
+- render แต่ละ segment ใช้ input (-ss) แยกกัน — ห้าม split input เดียวข้าม segment ที่เรียงไม่ตามเวลา (deadlock)
 - unit tests: `python3 -m unittest discover -s tests`
 - อย่า commit ไฟล์วิดีโอ/เสียง/โปรเจกต์

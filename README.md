@@ -15,6 +15,8 @@
 | ✨ เอฟเฟกต์ & จังหวะ | 3 สไตล์ `calm` · `dynamic` · `viral` — transition สมูท 30+ แบบ (crossfade, zoom, whip, slide, blur, circle…), กล้อง push-in/punch-in/shake, แฟลช, ประกายดาว, glow, glitch, vignette, ซับเด้ง + คำสำคัญสีเด่น, ภาพไม่นิ่งเกิน 2.5–4 วิ |
 | 🔔 เสียงเอฟเฟกต์ | whoosh, chime, sparkle, pop, impact, riser, shimmer — สังเคราะห์เอง ไม่ติดลิขสิทธิ์ วางอัตโนมัติตอน transition / เปิดไพ่ / hook |
 | 🎬 CapCut | `capcut` → วิดีโอไม่มีตัวหนังสือ + ซับ .srt (บรรทัด/ทีละคำ) + PNG โปร่งใส (hook, ป้ายไพ่, CTA) วางตำแหน่งแล้ว + เสียงเอฟเฟกต์ + คู่มือไทยว่าใส่อะไรตรงไหน |
+| 🎞️ ระดับมืออาชีพ | style `pro`, ซับ `bold` 2–3 คำ, ตัด เอ่อ/อืม อัตโนมัติ, cold open, zoom เข้าหาไพ่, เกรดสี `mystic`/`warm`/`clean`/`moody`/`vibrant` + LUT .cube, sharpen/denoise, 60fps, คุณภาพ max, คู่มือ pro-playbook ระดับช่อง 10M |
+| 🍎 Mac & NLE | mlx-whisper (M1–M4), VideoToolbox, `nle` → **Final Cut Pro / DaVinci Resolve** (FCPXML อ้างอิงไฟล์ต้นฉบับ + markers + overlays) และ **Premiere** (EDL) + SRT |
 | 🎨 แบรนด์ | hook บนจอ, CTA ท้ายคลิป (เปลี่ยนตามประเภทคลิป), watermark, progress bar, สีแบรนด์, ฟอนต์ Kanit |
 | 🔊 เสียง | ลด noise, compressor, เพลงประกอบลดเสียงอัตโนมัติเมื่อพูด, loudness -14 LUFS (two-pass) |
 | 🖼️ ปก | ปก 9:16 และ thumbnail 16:9 ตัวอักษรเรืองแสง |
@@ -22,6 +24,9 @@
 | ✅ QA | สเปกแพลตฟอร์ม, loudness, dead air, safe zone, คำเสี่ยงผิดนโยบาย (เลขเด็ด, การันตีผล) |
 
 ## เริ่มใช้งาน
+**Mac (แนะนำ):** `bash setup-mac.sh` — Homebrew ffmpeg, mlx-whisper (Apple Silicon), ฟอนต์ลงเครื่อง · คู่มือ [docs/MAC.md](docs/MAC.md)
+
+Linux / อื่น ๆ:
 ```bash
 bash setup.sh                       # ติดตั้ง ffmpeg (ผ่าน pip), faster-whisper, pythainlp, Pillow แล้วรัน doctor
 ```
@@ -70,6 +75,7 @@ python3 -m clipstudio render weekly
 python3 -m clipstudio thumbnail weekly --clip 01-aries --time 22.6 --title "ราศีเมษ มีข่าวดี"
 python3 -m clipstudio qa weekly && python3 -m clipstudio review weekly
 python3 -m clipstudio capcut weekly --zip           # ส่งต่อ CapCut
+python3 -m clipstudio nle weekly                    # ส่งต่อ Final Cut Pro / Resolve / Premiere
 python3 -m clipstudio cards --search tower
 ```
 

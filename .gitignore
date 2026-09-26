@@ -13,3 +13,4 @@ assets/sfx/*
 __pycache__/
 *.pyc
 .DS_Store
+assets/luts/.cache/

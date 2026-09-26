@@ -75,8 +75,13 @@ DEFAULTS: dict = {
               "music_volume": 0.12, "duck": True, "sfx": True, "sfx_volume": 1.0},
     # Pacing & effects. style: none | calm | dynamic | viral (see clipstudio/effects.py STYLES)
     "effects": {"style": "dynamic", "motion_oversample": 2, "emphasis_words": [], "overrides": {}},
+    # fps: number or "source" · quality: standard | max · encoder: auto (x264; VideoToolbox drafts on Mac) | x264 | videotoolbox
     "edit": {"remove_silence": True, "silence_db": -35.0, "min_silence": 0.45, "pad": 0.12,
-             "min_piece": 0.25, "fps": 30, "crf": 19, "preset": "medium", "fade_out": 0.35},
+             "min_piece": 0.25, "fps": 30, "crf": 19, "preset": "medium", "fade_out": 0.35,
+             "quality": "standard", "encoder": "auto", "remove_fillers": False,
+             "fillers": ["เอ่อ", "เออ", "อ่า", "อ้า", "อืม", "อืมม", "เอ้อ", "um", "uh", "umm", "erm", "hmm"]},
+    # look: none | clean | warm | mystic | moody | vibrant ; lut: path to .cube ; sharpen 0–1.5 ; denoise bool
+    "finish": {"look": "none", "lut": None, "sharpen": 0.0, "denoise": False},
     "platforms": ["tiktok", "reels", "shorts", "facebook"],
     # slots in PRIORITY order (best first); plan order = clip priority; per_day clips per day
     "posting": {"timezone": "Asia/Bangkok", "slots": ["19:30", "12:00", "21:30", "07:30"], "per_day": 2},

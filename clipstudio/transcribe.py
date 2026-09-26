@@ -127,6 +127,49 @@ def whisper(src: str, language: str, model_name: str, prompt: str | None, device
     return {"language": info.language, "backend": f"faster-whisper:{model_name}", "segments": segs}
 
 
+MLX_REPOS = {
+    "large-v3-turbo": "mlx-community/whisper-large-v3-turbo",
+    "turbo": "mlx-community/whisper-large-v3-turbo",
+    "large-v3": "mlx-community/whisper-large-v3-mlx",
+    "medium": "mlx-community/whisper-medium-mlx",
+    "small": "mlx-community/whisper-small-mlx",
+}
+
+
+def mlx(src: str, language: str, model_name: str, prompt: str | None) -> dict:
+    """Apple Silicon (M1–M4) GPU transcription via mlx-whisper — several times faster than CPU."""
+    try:
+        import mlx_whisper  # type: ignore
+    except ImportError as exc:
+        raise SystemExit("mlx-whisper is not installed: pip install mlx-whisper (Apple Silicon Macs only)") from exc
+    repo = MLX_REPOS.get(model_name, model_name)
+    res = mlx_whisper.transcribe(src, path_or_hf_repo=repo, language=language or None, word_timestamps=True,
+                                 initial_prompt=prompt or None, condition_on_previous_text=False)
+    segs = []
+    for i, s in enumerate(res.get("segments", [])):
+        tokens = [{"text": w["word"], "start": float(w["start"]), "end": float(w["end"])} for w in s.get("words", [])]
+        words = retime_words(tokens) if tokens else proportional_words(s["text"], s["start"], s["end"])
+        segs.append({"id": i, "start": round(float(s["start"]), 3), "end": round(float(s["end"]), 3),
+                     "text": s["text"].strip(), "words": words})
+        print(f"  [{mmss(s['start'])}] {s['text'].strip()[:70]}", flush=True)
+    return {"language": res.get("language", language), "backend": f"mlx-whisper:{repo}", "segments": segs}
+
+
+def pick_backend(backend: str) -> str:
+    if backend != "auto":
+        return backend
+    import platform
+
+    if platform.system() == "Darwin" and platform.machine() == "arm64":
+        try:
+            import mlx_whisper  # type: ignore  # noqa: F401
+
+            return "mlx"
+        except ImportError:
+            pass
+    return "faster"
+
+
 def write_sidecars(project: Project, transcript: dict):
     srt, txt = [], []
     for i, s in enumerate(transcript["segments"], 1):
@@ -139,7 +182,7 @@ def write_sidecars(project: Project, transcript: dict):
 
 
 def run(slug: str, *, srt: str | None = None, model: str | None = None, language: str | None = None,
-        device: str = "auto", resync_only: bool = False) -> dict:
+        device: str = "auto", resync_only: bool = False, backend: str = "auto") -> dict:
     project = Project(slug)
     meta = project.load_meta()
     cfg = load_config()
@@ -162,8 +205,12 @@ def run(slug: str, *, srt: str | None = None, model: str | None = None, language
         if not os.path.exists(wav):
             ff.run(["-y", "-i", src, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", wav])
         model = model or cfg.get("asr", {}).get("model", "large-v3-turbo")
-        print(f"transcribing with faster-whisper {model} ({language}) ...", flush=True)
-        tr = whisper(wav, language, model, cfg.get("asr", {}).get("prompt"), device)
+        be = pick_backend(backend or cfg.get("asr", {}).get("backend", "auto"))
+        print(f"transcribing with {'mlx-whisper' if be == 'mlx' else 'faster-whisper'} {model} ({language}) ...", flush=True)
+        if be == "mlx":
+            tr = mlx(wav, language, model, cfg.get("asr", {}).get("prompt"))
+        else:
+            tr = whisper(wav, language, model, cfg.get("asr", {}).get("prompt"), device)
     fixed = apply_fixes(tr, cfg.get("asr", {}).get("fixes", {}))
     write_json(out_path, tr)
     write_sidecars(project, tr)

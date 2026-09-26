@@ -192,3 +192,34 @@ class ScheduleTests(unittest.TestCase):
         cfg = {"posting": {"slots": ["19:30", "12:00", "07:30"], "per_day": 2}}
         out = schedule_slots(cfg, 3, dt.date(2026, 10, 1))
         self.assertEqual(out, ["2026-10-01 19:30", "2026-10-01 12:00", "2026-10-02 19:30"])
+
+
+class ProFeatureTests(unittest.TestCase):
+    def test_fcpxml_time_grid(self):
+        from fractions import Fraction
+        from clipstudio.nle import frame_duration, rt, tc
+        self.assertEqual(frame_duration(29.97), Fraction(1001, 30000))
+        self.assertEqual(rt(1.0, Fraction(1, 30)), "1s")
+        self.assertEqual(rt(19.17, Fraction(1, 30)), "115/6s")  # 575 frames at 30fps
+        self.assertEqual(tc(3723.5, 30), "01:02:03:15")
+
+    def test_looks_and_fps(self):
+        from clipstudio import finish
+        cfg = deep_merge(DEFAULTS, {})
+        self.assertEqual(finish.look_chain({"id": "a"}, cfg), "")
+        chain = finish.look_chain({"id": "a", "look": "mystic", "sharpen": 0.4}, cfg)
+        self.assertIn("colorbalance", chain)
+        self.assertIn("unsharp", chain)
+        with self.assertRaises(SystemExit):
+            finish.look_chain({"id": "a", "look": "nope"}, cfg)
+        self.assertEqual(finish.pick_fps({"fps": "source"}, cfg, {"fps": 59.94}), 60)
+        self.assertEqual(finish.pick_fps({}, cfg, {"fps": 59.94}), 30)
+
+    def test_bold_captions_limit_words(self):
+        cfg = deep_merge(DEFAULTS, {})
+        ab = AssBuilder(1080, 1920, cfg)
+        words = [{"text": t, "start": i * 0.3, "end": i * 0.3 + 0.25, "seg": 0}
+                 for i, t in enumerate(["หนึ่ง", "สอง", "สาม", "สี่", "ห้า", "หก", "เจ็ด"])]
+        cards_ = ab.caption_cards(words, {"style": "bold"})
+        self.assertTrue(all(sum(len(ln) for ln in c["lines"]) <= 3 for c in cards_))
+        self.assertEqual(sum(sum(len(ln) for ln in c["lines"]) for c in cards_), 7)

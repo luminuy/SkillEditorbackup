@@ -6,7 +6,7 @@ Run everything from the repo root. Every project lives in `projects/<slug>/`.
 |---|---|---|
 | `doctor` | checks ffmpeg filters (ass, loudnorm, silencedetect, sidechaincompress, afftdn), faster-whisper, pythainlp, Pillow, fonts, config | — |
 | `init VIDEO [--name SLUG]` | probes the video (size, fps, rotation, audio) | `project.json` |
-| `transcribe SLUG [--model M] [--lang th] [--srt F] [--resync]` | faster-whisper with word timestamps + VAD + niche vocabulary prompt; Thai words re-segmented with pythainlp; auto-fixes from preset `asr.fixes` | `transcript.json/.txt/.srt`, `audio16k.wav` |
+| `transcribe SLUG [--model M] [--lang th] [--srt F] [--backend auto|faster|mlx] [--resync]` | faster-whisper with word timestamps + VAD + niche vocabulary prompt; Thai words re-segmented with pythainlp; auto-fixes from preset `asr.fixes` | `transcript.json/.txt/.srt`, `audio16k.wav` |
 | `fix SLUG ID "text" [ID "text" …]` | replace a segment's text, keep its timing, redistribute word timings | updates transcript |
 | `analyze SLUG` | silences, chapters (zodiac / weekday / pile / custom regex), scored candidate windows, risk flags | `silences.json`, `analysis.json`, `analysis.md` |
 | `frames SLUG [--times a,b] [--every S] [--count N] [--video F] [--tag T]` | labelled contact sheet so an agent can *look* at the footage (Read the jpg) | `work/frames_<tag>.jpg` |
@@ -14,6 +14,7 @@ Run everything from the repo root. Every project lives in `projects/<slug>/`.
 | `plan-check SLUG` | validates plan: durations per platform (after silence cut + transitions), hook length, card ids, styles/transitions/fx names, speed; prints fx/sfx counts; exit 1 on ERROR | — |
 | `capcut SLUG [--clip ID] [--raw] [--zip]` | CapCut kit: text-free video (effects baked, or none with --raw), .srt (lines + words), transparent full-frame PNG overlays, sfx + cue csv, markers.csv, EDIT_GUIDE.md | `capcut/<id>/` |
 | `sfx` | list / synthesise the sound-effect library | `assets/sfx/*.wav` |
+| `nle SLUG [--clip ID]` | Final Cut Pro / Resolve FCPXML (cuts reference the original media + markers + PNG overlays), Premiere EDL, SRT, markers csv | `nle/` |
 | `render SLUG [--clip ID]… [--draft]` | renders clips (draft = ultrafast, CRF 28) | `renders/<id>[.draft].mp4`, `renders/manifest.json`, `work/<id>.ass` |
 | `snapshot SLUG CLIP` | 5-frame sheet of a render (0.6 s, 25/50/75 %, last second) | `work/snap_<id>.jpg` |
 | `thumbnail SLUG --time T --title "…" [--sub "…"] [--size 1080x1920] [--clip ID] [--x 0.5] [--video F]` | frame + glow title + badge + watermark | `thumbs/<clip>_<size>.jpg` |
@@ -62,7 +63,11 @@ Run everything from the repo root. Every project lives in `projects/<slug>/`.
     "sfx": [{"at": 70.8, "name": "riser", "offset": -1.2}],                   // whoosh whoosh-soft chime sparkle pop impact riser shimmer click
     "emphasis": ["เนื้อคู่"],                 // extra keywords coloured in captions
     "caption_anim": "pop",                  // none | fade | pop | bounce
-    "auto_fx": true, "sfx_enabled": true, "sfx_map": {"reveal": "chime"}, "cut_punch": 0.08, "vignette": true
+    "auto_fx": true, "sfx_enabled": true, "sfx_map": {"reveal": "chime"}, "cut_punch": 0.08, "vignette": true,
+
+    // ---- finishing (pro) ----
+    "look": "mystic", "lut": null, "sharpen": 0.4, "denoise": false,   // none clean warm mystic moody vibrant
+    "remove_fillers": true, "fps": "source"                             // captions.style may also be "bold" (+ max_words)
   }]
 }
 ```

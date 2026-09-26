@@ -3,3 +3,4 @@ imageio-ffmpeg>=0.5     # static ffmpeg (with libass) if no system ffmpeg is ins
 faster-whisper>=1.1     # speech-to-text with word timestamps (downloads the model on first use)
 pythainlp>=5.0          # Thai word segmentation for line breaks / word highlights
 Pillow>=10.0            # text measuring + contact sheets
+numpy>=1.24             # transparent PNG overlays (CapCut / NLE)
