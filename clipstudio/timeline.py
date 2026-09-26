@@ -12,10 +12,12 @@ class Timeline:
             if d <= 0:
                 continue
             q = dict(p)
-            q["out_start"] = t
-            q["out_end"] = t + d
+            ov = float(q.get("overlap") or 0.0) if self.pieces else 0.0  # xfade overlap with previous piece
+            q["overlap"] = ov
+            q["out_start"] = t - ov
+            q["out_end"] = t - ov + d
             self.pieces.append(q)
-            t += d
+            t = q["out_end"]
         self.duration = t
 
     def map(self, t: float) -> float | None:

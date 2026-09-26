@@ -24,14 +24,15 @@ def _post_text(pc: dict) -> str:
 
 
 def schedule_slots(cfg: dict, n: int, start: dt.date | None = None) -> list[str]:
-    slots = cfg["posting"]["slots"] or ["19:30"]
-    day = start or (dt.date.today() + dt.timedelta(days=1))
+    """Clip i (plan order = priority) -> datetime. Each day uses the best `per_day` slots
+    (posting.slots is in priority order), so the strongest clip lands in prime time on day one."""
+    slots = cfg["posting"].get("slots") or ["19:30"]
+    per_day = max(1, min(len(slots), int(cfg["posting"].get("per_day", 2))))
+    day0 = start or (dt.date.today() + dt.timedelta(days=1))
     out = []
-    i = 0
-    while len(out) < n:
-        d = day + dt.timedelta(days=i // len(slots))
-        out.append(f"{d.isoformat()} {slots[i % len(slots)]}")
-        i += 1
+    for i in range(n):
+        d = day0 + dt.timedelta(days=i // per_day)
+        out.append(f"{d.isoformat()} {slots[i % per_day]}")
     return out
 
 
@@ -58,6 +59,8 @@ def run(slug: str, start: str | None = None) -> str:
         os.makedirs(cdir, exist_ok=True)
         blocks = []
         for p, pc in (copy.get("platforms") or {}).items():
+            if p not in (c.get("platforms") or cfg.get("platforms", [])):
+                continue
             text = _post_text(pc)
             with open(os.path.join(cdir, f"{p}.txt"), "w", encoding="utf-8") as f:
                 f.write(text + "\n")
@@ -82,6 +85,10 @@ def run(slug: str, start: str | None = None) -> str:
   </div>
 </section>""")
 
+    rows.sort(key=lambda r: r["slot"])
+    missing = [c["id"] for c in clips if not os.path.exists(project.path("renders", f"{c['id']}.mp4"))]
+    if missing:
+        print(f"WARNING: no final render for: {', '.join(missing)} (run: render {slug} --clip <id>)")
     with open(project.path("schedule.csv"), "w", encoding="utf-8-sig", newline="") as f:
         w = csv.DictWriter(f, fieldnames=["slot", "clip", "platform", "video", "text"])
         w.writeheader()

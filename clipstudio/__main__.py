@@ -6,8 +6,11 @@
   fix SLUG ID "text" [ID "text"]  correct transcript segments (keeps timings)
   analyze SLUG                   silences, chapters, clip candidates, risk flags
   frames SLUG [--times 1,2] [--every S] [--count N]   contact sheet to look at
-  plan-check SLUG                validate plan.json and print clip durations
+  find SLUG "text"               exact source time of a word/phrase (for labels, fx)
+  plan-check SLUG                validate plan.json (durations, hooks, card ids, styles); exit 1 on errors
   render SLUG [--clip ID ...] [--draft]
+  capcut SLUG [--clip ID] [--raw] [--zip]  CapCut kit: clean video + .srt + PNG overlays + sfx + edit guide
+  sfx                            list / build the sound-effect library
   snapshot SLUG CLIP             contact sheet of a rendered clip (visual QA)
   thumbnail SLUG --time T --title TEXT [--sub TEXT] [--size 1080x1920] [--clip ID] [--x 0.5]
   qa SLUG [--clip ID ...]
@@ -115,27 +118,104 @@ def cmd_frames(a):
 
 
 def cmd_plan_check(a):
-    from .render import load_plan
-    from .timeline import Timeline, subtract
+    """Validate plan.json: structure, card ids, styles/transitions, durations per platform, hook length."""
+    from . import cards
+    from .config import PLATFORMS
+    from .render import load_plan, prepare_clip
+    from .textutil import EMOJI_RE, visible_len
 
     project = Project(a.slug)
     plan = load_plan(project)
     cfg = load_config()
-    sil = read_json(project.path("silences.json")) if os.path.exists(project.path("silences.json")) else []
+    meta = project.load_meta()
+    errors = warns = 0
     for c in plan["clips"]:
-        segs = c["segments"]
-        raw = sum(s["end"] - s["start"] for s in segs)
-        rm = c.get("remove_silence", cfg["edit"]["remove_silence"])
-        pieces = subtract(sorted(segs, key=lambda s: s["start"]), sil, cfg["edit"]["pad"], cfg["edit"]["min_piece"]) if rm else segs
-        d = Timeline(pieces).duration / float(c.get("speed") or 1.0)
-        print(f"{c['id']:24} {c.get('format', 'vertical'):10} raw {raw:6.1f}s -> ~{d:6.1f}s  hook: {c.get('hook', '')[:40]}")
-    print("plan OK")
+        msgs = []
+        try:
+            prep = prepare_clip(project, c, cfg, meta)
+            d = prep["total"]
+        except SystemExit as e:
+            msgs.append(("ERROR", str(e)))
+            d = 0.0
+            prep = None
+        for lb in c.get("labels", []):
+            if lb.get("card") and not cards.get(lb["card"]):
+                msgs.append(("ERROR", f"unknown card id '{lb['card']}' (python3 -m clipstudio cards --search ...)"))
+            if "at" in lb and not any(s["start"] - 0.5 <= lb["at"] <= s["end"] + 0.5 for s in c["segments"]):
+                msgs.append(("WARN", f"label at {lb['at']}s is outside every segment (it will snap to the next piece)"))
+        sp = float(c.get("speed") or 1.0)
+        if not 0.8 <= sp <= 1.2:
+            msgs.append(("ERROR", f"speed {sp} out of range 0.8–1.2"))
+        hook = c.get("hook", "")
+        if not hook:
+            msgs.append(("WARN", "no hook text"))
+        elif visible_len(hook) > 40:
+            msgs.append(("WARN", f"hook is {visible_len(hook)} visible chars (> 40; tone/vowel marks not counted)"))
+        if EMOJI_RE.search(hook):
+            msgs.append(("WARN", "emoji in hook will be removed (no emoji on video)"))
+        for p in c.get("platforms") or cfg.get("platforms", []):
+            spec = PLATFORMS.get(p)
+            if not spec:
+                msgs.append(("ERROR", f"unknown platform '{p}' (use {', '.join(PLATFORMS)})"))
+                continue
+            if d and d > spec["max_seconds"]:
+                msgs.append(("ERROR", f"{spec['label']}: {d:.1f}s > {spec['max_seconds']}s limit"))
+            elif d and not spec["sweet_spot"][0] <= d <= spec["sweet_spot"][1]:
+                msgs.append(("WARN", f"{spec['label']}: {d:.1f}s outside sweet spot {spec['sweet_spot'][0]}-{spec['sweet_spot'][1]}s"))
+        fx = ""
+        if prep:
+            ev = prep["events"]
+            fx = (f" style={prep['style']['name']} fx={len(ev['ass']) + len(ev['zoom']) + len(ev['shake'])}"
+                  f" sfx={len(ev['sfx'])}")
+        print(f"{c['id']:22} {c.get('format', 'vertical'):9} ~{d:5.1f}s{fx}  hook: {hook[:40]}")
+        for lvl, m in msgs:
+            print(f"    {lvl}: {m}")
+            errors += lvl == "ERROR"
+            warns += lvl == "WARN"
+    print(f"plan: {len(plan['clips'])} clip(s), {errors} error(s), {warns} warning(s)")
+    return 1 if errors else 0
+
+
+def cmd_find(a):
+    """Find words/phrases in the transcript and print exact source times (for labels / fx 'at')."""
+    project = Project(a.slug)
+    tr = read_json(project.path("transcript.json"))
+    q = a.query.replace(" ", "").lower()
+    hits = 0
+    for seg in tr["segments"]:
+        words = seg.get("words") or []
+        joined, starts = "", []
+        for w in words:
+            for ch in w["text"]:
+                if not ch.isspace():
+                    starts.append(w["start"])
+                    joined += ch.lower()
+        i = joined.find(q)
+        while i >= 0:
+            hits += 1
+            print(f"#{seg['id']:<4} at {starts[i]:8.2f}s   {seg['text']}")
+            i = joined.find(q, i + 1)
+    if not hits:
+        print("no match (try a shorter query, or check transcript.txt)")
 
 
 def cmd_render(a):
     from . import render
 
     render.run(a.slug, a.clip, a.draft)
+
+
+def cmd_capcut(a):
+    from . import capcut
+
+    capcut.run(a.slug, a.clip, raw=a.raw, draft=a.draft, zip_=a.zip)
+
+
+def cmd_sfx(a):
+    from . import sfx
+
+    for name, (desc, _) in sfx.LIBRARY.items():
+        print(f"{name:12} {desc}  -> {sfx.path(name)}")
 
 
 def cmd_snapshot(a):
@@ -209,8 +289,13 @@ def main(argv=None):
     s.add_argument("--count", type=int, default=16); s.add_argument("--video"); s.add_argument("--tag", default="source")
     s.set_defaults(fn=cmd_frames)
     s = sub.add_parser("plan-check"); s.add_argument("slug"); s.set_defaults(fn=cmd_plan_check)
+    s = sub.add_parser("find"); s.add_argument("slug"); s.add_argument("query"); s.set_defaults(fn=cmd_find)
     s = sub.add_parser("render"); s.add_argument("slug"); s.add_argument("--clip", action="append")
     s.add_argument("--draft", action="store_true"); s.set_defaults(fn=cmd_render)
+    s = sub.add_parser("capcut"); s.add_argument("slug"); s.add_argument("--clip", action="append")
+    s.add_argument("--raw", action="store_true"); s.add_argument("--draft", action="store_true")
+    s.add_argument("--zip", action="store_true"); s.set_defaults(fn=cmd_capcut)
+    sub.add_parser("sfx").set_defaults(fn=cmd_sfx)
     s = sub.add_parser("snapshot"); s.add_argument("slug"); s.add_argument("clip"); s.set_defaults(fn=cmd_snapshot)
     s = sub.add_parser("thumbnail"); s.add_argument("slug"); s.add_argument("--time", type=float, required=True)
     s.add_argument("--title", required=True); s.add_argument("--sub"); s.add_argument("--size", default="1080x1920")

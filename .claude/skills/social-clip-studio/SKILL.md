@@ -1,6 +1,6 @@
 ---
 name: social-clip-studio
-description: ผู้กำกับตัดต่อคลิปสั้นลง TikTok, Instagram Reels, YouTube Shorts, Facebook Reels แบบครบวงจร — รับวิดีโอยาว (ไลฟ์ดูดวง, คลิปพูด, พอดแคสต์, สอน) แล้วถอดเสียงไทย, เลือกช่วงไวรัล, ตัดเป็นแนวตั้ง 9:16, ใส่ซับไทยไฮไลต์ทีละคำ, hook, ป้ายไพ่, CTA, ทำปก, เขียนแคปชัน+แฮชแท็ก, ตรวจ QA และวางตารางโพสต์ โดยสั่งงานทีมเอเจนต์หลายตัวพร้อมกัน. ใช้สกิลนี้ทุกครั้งที่ผู้ใช้พูดถึง ตัดคลิป, ตัดต่อ, ทำคลิปสั้น, ลง TikTok/Reels/Shorts, แปลงคลิปยาวเป็นคลิปสั้น, ทำซับ, repurpose video, clip a livestream, หรือส่งไฟล์วิดีโอมาให้ — แม้จะไม่ได้เอ่ยชื่อสกิลก็ตาม.
+description: ผู้กำกับตัดต่อคลิปสั้นลง TikTok, Instagram Reels, YouTube Shorts, Facebook Reels แบบครบวงจร — รับวิดีโอยาว (ไลฟ์ดูดวง, คลิปพูด, พอดแคสต์, สอน) แล้วถอดเสียงไทย, เลือกช่วงไวรัล, ตัดเป็นแนวตั้ง 9:16, ใส่ซับไทยไฮไลต์ทีละคำ, hook, ป้ายไพ่, transition/เอฟเฟกต์/เสียงประกอบ/จังหวะ, CTA, ทำปก, ส่งต่อ CapCut, เขียนแคปชัน+แฮชแท็ก, ตรวจ QA และวางตารางโพสต์ โดยสั่งงานทีมเอเจนต์หลายตัวพร้อมกัน. ใช้สกิลนี้ทุกครั้งที่ผู้ใช้พูดถึง ตัดคลิป, ตัดต่อ, ทำคลิปสั้น, ลง TikTok/Reels/Shorts, แปลงคลิปยาวเป็นคลิปสั้น, ทำซับ, repurpose video, clip a livestream, หรือส่งไฟล์วิดีโอมาให้ — แม้จะไม่ได้เอ่ยชื่อสกิลก็ตาม.
 ---
 
 # Social Clip Studio — ผู้กำกับ (Director)
@@ -18,7 +18,8 @@ description: ผู้กำกับตัดต่อคลิปสั้น�
 | `clip-transcriber` | ถอดเสียง + พิสูจน์อักษร (ชื่อไพ่/ราศี/ศัพท์เฉพาะ) | — (ต้องเสร็จก่อน) |
 | `clip-trend-scout` | หาเทรนด์/แฮชแท็ก/รูปแบบ hook ล่าสุดของ niche (เว็บ, vidIQ ถ้ามี) | transcriber |
 | `clip-story-producer` | อ่าน transcript + ดูเฟรม → เลือกช่วง, เขียน `plan.json` (hook, labels, reframe) | — |
-| `clip-video-editor` | render draft → ดู snapshot → แก้ → render final | copywriter, thumbnail-artist |
+| `clip-effects-designer` | style จังหวะ, transition, แฟลช/ประกาย/ซูม, เสียงเอฟเฟกต์, คำสำคัญในซับ (แก้ plan.json) | — |
+| `clip-video-editor` | render draft → ดู snapshot → แก้ → **render final** (+ CapCut kit ถ้าขอ) | copywriter, thumbnail-artist |
 | `clip-copywriter` | แคปชัน/ชื่อคลิป/แฮชแท็กต่อแพลตฟอร์ม → `copy/<id>.json` | editor, thumbnail-artist |
 | `clip-thumbnail-artist` | เลือกเฟรม + ทำปก 9:16 และ thumbnail 16:9 | editor, copywriter |
 | `clip-qa-reviewer` | ตรวจเทคนิค + ตรวจด้วยตา + ตรวจนโยบาย → สั่งแก้ | — (ท้ายสุด) |
@@ -31,9 +32,11 @@ description: ผู้กำกับตัดต่อคลิปสั้น�
 2. PARALLEL   clip-transcriber  ‖  clip-trend-scout
 3. analyze    python3 -m clipstudio analyze <slug>
 4. produce    clip-story-producer → projects/<slug>/plan.json
-5. PARALLEL   clip-video-editor ‖ clip-copywriter ‖ clip-thumbnail-artist
-6. QA         clip-qa-reviewer → ถ้า fail ส่งกลับ agent ที่เกี่ยวข้อง (วนได้ ≤ 2 รอบ)
-7. deliver    python3 -m clipstudio review <slug>  → review.html, schedule.csv, publish/<clip>/<platform>.txt
+5. effects    clip-effects-designer → เพิ่ม style/transition/fx/sfx ใน plan.json
+6. PARALLEL   clip-video-editor (render FINAL ทุกคลิป) ‖ clip-copywriter ‖ clip-thumbnail-artist
+7. QA         clip-qa-reviewer → ถ้า fail ส่งกลับ agent ที่เกี่ยวข้อง (วนได้ ≤ 2 รอบ)
+8. deliver    python3 -m clipstudio review <slug>  → review.html, schedule.csv, publish/<clip>/<platform>.txt
+   (+ CapCut) python3 -m clipstudio capcut <slug> [--zip]  → projects/<slug>/capcut/<id>/  (skill clip-capcut)
 ```
 
 การส่งงานให้เอเจนต์: เรียกด้วย Agent tool (`subagent_type` = ชื่อเอเจนต์) ใส่ **slug, path, เป้าหมาย, ข้อจำกัด** ให้ครบ
@@ -42,7 +45,8 @@ description: ผู้กำกับตัดต่อคลิปสั้น�
 ### ข้อมูลที่ต้องถามผู้ใช้ (ถ้ายังไม่รู้ — ถามครั้งเดียวรวบยอด อย่าถามทีละข้อ)
 - ไฟล์วิดีโออยู่ไหน (local path / Google Drive — ใช้ Google Drive connector ดาวน์โหลดเข้า `input/`)
 - จำนวนคลิปที่อยากได้ และแพลตฟอร์ม (ค่าเริ่มต้นจาก `channel.config.json`)
-- สไตล์ซับ (highlight / karaoke / pop / plain) — ถ้าไม่ระบุใช้ค่าใน config
+- สไตล์ซับ (highlight / karaoke / pop / plain) และจังหวะ (calm / dynamic / viral) — ถ้าไม่ระบุใช้ค่าใน config
+- จะโพสต์ไฟล์สำเร็จจากเราเลย หรือจะไปแต่งต่อใน **CapCut** (ถ้า CapCut → ส่ง CapCut kit ด้วย)
 - ถ้า `channel.config.json` ยังเป็นค่า placeholder (`@yourtarotchannel`) ให้ถามชื่อช่อง/handle ก่อน render final
 
 ถ้าผู้ใช้ให้แค่ไฟล์แล้วบอก "จัดการเลย" → ใช้ค่าเริ่มต้นทั้งหมด แล้วบอกสิ่งที่สมมติไว้ตอนส่งงาน
@@ -76,6 +80,9 @@ niche อื่น: สร้าง preset ใหม่ใน `presets/<niche>.j
 ส่วนเสริมภายนอกที่แนะนำ (ติดตั้งผ่าน claude.ai → Plugins/Connectors ถ้าผู้ใช้ต้องการ): ดู `references/external-addons.md`
 
 ## การส่งมอบ
+
+QA และ review ใช้ไฟล์ **final** (`renders/<id>.mp4`) — draft (`.draft.mp4`) ใช้ระหว่างปรับเท่านั้น ต้องสั่ง editor render final ก่อน QA เสมอ
+
 
 ตอบผู้ใช้สั้น ๆ: จำนวนคลิป, ความยาวแต่ละคลิป + hook, สถานะ QA, ตำแหน่งไฟล์ (`projects/<slug>/renders/`, `review.html`, `schedule.csv`)
 และสิ่งที่ต้องให้คนตัดสินใจ (เช่น คลิปที่ติด flag นโยบาย) — ห้ามโพสต์ลงแพลตฟอร์มเองโดยไม่ได้รับอนุญาตชัดเจน

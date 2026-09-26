@@ -10,7 +10,10 @@ Run everything from the repo root. Every project lives in `projects/<slug>/`.
 | `fix SLUG ID "text" [ID "text" …]` | replace a segment's text, keep its timing, redistribute word timings | updates transcript |
 | `analyze SLUG` | silences, chapters (zodiac / weekday / pile / custom regex), scored candidate windows, risk flags | `silences.json`, `analysis.json`, `analysis.md` |
 | `frames SLUG [--times a,b] [--every S] [--count N] [--video F] [--tag T]` | labelled contact sheet so an agent can *look* at the footage (Read the jpg) | `work/frames_<tag>.jpg` |
-| `plan-check SLUG` | validates `plan.json`, prints estimated durations after silence cut | — |
+| `find SLUG "text"` | exact source time of a word/phrase (for `labels.at`, `fx.at`, segment starts) | — |
+| `plan-check SLUG` | validates plan: durations per platform (after silence cut + transitions), hook length, card ids, styles/transitions/fx names, speed; prints fx/sfx counts; exit 1 on ERROR | — |
+| `capcut SLUG [--clip ID] [--raw] [--zip]` | CapCut kit: text-free video (effects baked, or none with --raw), .srt (lines + words), transparent full-frame PNG overlays, sfx + cue csv, markers.csv, EDIT_GUIDE.md | `capcut/<id>/` |
+| `sfx` | list / synthesise the sound-effect library | `assets/sfx/*.wav` |
 | `render SLUG [--clip ID]… [--draft]` | renders clips (draft = ultrafast, CRF 28) | `renders/<id>[.draft].mp4`, `renders/manifest.json`, `work/<id>.ass` |
 | `snapshot SLUG CLIP` | 5-frame sheet of a render (0.6 s, 25/50/75 %, last second) | `work/snap_<id>.jpg` |
 | `thumbnail SLUG --time T --title "…" [--sub "…"] [--size 1080x1920] [--clip ID] [--x 0.5] [--video F]` | frame + glow title + badge + watermark | `thumbs/<clip>_<size>.jpg` |
@@ -30,7 +33,7 @@ Run everything from the repo root. Every project lives in `projects/<slug>/`.
     "format": "vertical",                   // vertical 1080x1920 | portrait 1080x1350 | square | horizontal 1920x1080
     "segments": [                           // SOURCE seconds; several = montage
       {"start": 19.0, "end": 46.5},
-      {"start": 60.2, "end": 71.0, "zoom": 1.15, "x": 0.45}   // per-segment punch-in / reframe override
+      {"start": 60.2, "end": 71.0, "zoom": 1.15, "x": 0.45, "transition_in": "crossfade"}   // per-segment reframe / incoming transition
     ],
     "sort": true,                           // false = keep segment order (cold open: put the reveal first)
     "reframe": {"mode": "fit", "bg": "blur"},   // fit (+bg blur|#hex, zoom, fg_y) | crop (+x, y, zoom) | stack (+regions)
@@ -48,7 +51,18 @@ Run everything from the repo root. Every project lives in `projects/<slug>/`.
     "music_volume": 0.12,
     "voice_enhance": true,
     "disclaimer": false,                    // burn a small disclaimer for the first seconds
-    "notes": "why this clip works"          // for humans / QA
+    "notes": "why this clip works",         // for humans / QA
+    "kind": "zodiac",                       // zodiac | pile | weekday | message | highlight → picks CTA from cta_by_kind
+    "platforms": ["tiktok", "shorts"],      // optional; default = channel.config.json platforms
+
+    // ---- effects & pacing (skill clip-effects) ----
+    "style": "dynamic",                     // none | calm | dynamic | viral
+    "transition": "zoom",                   // between segments: crossfade dissolve zoom whip slide blur circle dip flashfade … | cut punch flash shake glitchcut
+    "fx": [{"at": 95.5, "type": "stars", "duration": 1.6, "sfx": "shimmer"}],   // punch zoom shake glitch flash flash-strong sparkle stars glow
+    "sfx": [{"at": 70.8, "name": "riser", "offset": -1.2}],                   // whoosh whoosh-soft chime sparkle pop impact riser shimmer click
+    "emphasis": ["เนื้อคู่"],                 // extra keywords coloured in captions
+    "caption_anim": "pop",                  // none | fade | pop | bounce
+    "auto_fx": true, "sfx_enabled": true, "sfx_map": {"reveal": "chime"}, "cut_punch": 0.08, "vignette": true
   }]
 }
 ```

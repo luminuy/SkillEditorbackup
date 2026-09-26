@@ -17,9 +17,15 @@ def check_clip(project: Project, clip: dict, cfg: dict) -> dict:
     def add(level, msg):
         issues.append({"level": level, "msg": msg})
 
+    platforms = clip.get("platforms") or cfg.get("platforms", [])
     if not os.path.exists(path):
-        add("fail", "not rendered yet")
-        return {"id": cid, "status": "fail", "issues": issues}
+        draft = project.path("renders", f"{cid}.draft.mp4")
+        if not os.path.exists(draft):
+            add("fail", "not rendered yet — run: render <slug> --clip " + cid)
+            _check_copy(project, clip, cfg, platforms, add)
+            return {"id": cid, "status": "fail", "issues": issues}
+        add("fail", "only a DRAFT exists (low quality) — render the final: render <slug> --clip " + cid)
+        path = draft
 
     info = ff.probe(path)
     W, H = FORMATS[clip.get("format", "vertical")]
@@ -39,15 +45,15 @@ def check_clip(project: Project, clip: dict, cfg: dict) -> dict:
 
     dur = info["duration"]
     fmt = clip.get("format", "vertical")
-    for p in cfg.get("platforms", []):
+    for p in platforms:
         spec = PLATFORMS.get(p)
         if not spec or spec["format"] != fmt:
             continue
         if dur > spec["max_seconds"]:
-            add("fail", f"{spec['label']}: {dur:.0f}s is over the {spec['max_seconds']}s limit")
+            add("fail", f"{spec['label']}: {dur:.1f}s is over the {spec['max_seconds']}s limit")
         lo, hi = spec["sweet_spot"]
         if not lo <= dur <= hi:
-            add("info", f"{spec['label']}: {dur:.0f}s is outside the {lo}-{hi}s sweet spot")
+            add("info", f"{spec['label']}: {dur:.1f}s is outside the {lo}-{hi}s sweet spot")
 
     loud = ff.loudness(path)
     target = cfg["audio"]["target_lufs"]
@@ -66,32 +72,46 @@ def check_clip(project: Project, clip: dict, cfg: dict) -> dict:
     if not clip.get("hook"):
         add("warn", "no on-screen hook text")
 
-    copy_path = project.path("copy", f"{cid}.json")
-    if not os.path.exists(copy_path):
-        add("warn", "no post copy yet (copy/<id>.json)")
-    else:
-        copy = read_json(copy_path)
-        blob = " ".join(_strings(copy))
-        for pat, why in RISK_PATTERNS:
-            if re.search(pat, blob):
-                add("warn", f"post copy contains risky wording: {why}")
-        for p, pc in (copy.get("platforms") or {}).items():
-            spec = PLATFORMS.get(p, {})
-            tags = pc.get("hashtags") or []
-            if spec.get("hashtags") and len(tags) > spec["hashtags"][1] + 3:
-                add("info", f"{p}: {len(tags)} hashtags (recommended {spec['hashtags'][0]}-{spec['hashtags'][1]})")
-            title = pc.get("title") or ""
-            if spec.get("title_limit") and len(title) > spec["title_limit"]:
-                add("fail", f"{p}: title {len(title)} chars > {spec['title_limit']}")
-            cap = (pc.get("caption") or "") + " " + " ".join(tags)
-            if spec.get("caption_limit") and len(cap) > spec["caption_limit"]:
-                add("fail", f"{p}: caption {len(cap)} chars > {spec['caption_limit']}")
-        if cfg.get("niche") == "tarot" and not re.search(r"วิจารณญาณ|ความบันเทิง|แนวทาง|entertainment", blob):
-            add("info", "no disclaimer line in post copy (recommended for tarot content)")
+    _check_copy(project, clip, cfg, platforms, add)
 
     status = "fail" if any(i["level"] == "fail" for i in issues) else "warn" if any(
         i["level"] == "warn" for i in issues) else "pass"
     return {"id": cid, "status": status, "duration": round(dur, 2), "loudness": loud, "issues": issues}
+
+
+def _check_copy(project: Project, clip: dict, cfg: dict, platforms: list[str], add) -> None:
+    cid = clip["id"]
+    copy_path = project.path("copy", f"{cid}.json")
+    if not os.path.exists(copy_path):
+        add("warn", "no post copy yet (copy/<id>.json)")
+        return
+    copy = read_json(copy_path)
+    blob = " ".join(_strings(copy))
+    for pat, why in RISK_PATTERNS:
+        if re.search(pat, blob):
+            add("warn", f"post copy contains risky wording: {why}")
+    have = set((copy.get("platforms") or {}).keys())
+    missing = [p for p in platforms if p not in have]
+    if missing:
+        add("warn", f"post copy missing for: {', '.join(missing)}")
+    for p, pc in (copy.get("platforms") or {}).items():
+        spec = PLATFORMS.get(p, {})
+        tags = pc.get("hashtags") or []
+        if spec.get("hashtags") and len(tags) > spec["hashtags"][1]:
+            add("info", f"{p}: {len(tags)} hashtags (recommended {spec['hashtags'][0]}-{spec['hashtags'][1]})")
+        low = [t.lower() for t in tags]
+        if len(low) != len(set(low)):
+            add("warn", f"{p}: duplicate hashtags")
+        title = pc.get("title") or ""
+        if "#shorts" in title.lower() and "#shorts" in low:
+            add("info", f"{p}: #shorts appears in both title and hashtags (shows twice)")
+        if spec.get("title_limit") and len(title) > spec["title_limit"]:
+            add("fail", f"{p}: title {len(title)} chars > {spec['title_limit']}")
+        cap = (pc.get("caption") or "") + " " + (pc.get("description") or "") + " " + " ".join(tags)
+        if spec.get("caption_limit") and len(cap) > spec["caption_limit"]:
+            add("fail", f"{p}: caption {len(cap)} chars > {spec['caption_limit']}")
+    if cfg.get("niche") == "tarot" and not re.search(r"วิจารณญาณ|ความบันเทิง|แนวทาง|entertainment", blob):
+        add("info", "no disclaimer line in post copy (recommended for tarot content)")
 
 
 def _strings(obj):

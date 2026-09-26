@@ -138,3 +138,57 @@ class CardDataTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class EffectsTests(unittest.TestCase):
+    def test_transition_names(self):
+        from clipstudio import effects
+        st = effects.STYLES["dynamic"]
+        self.assertEqual(effects.parse_transition("whip", st), ("smoothleft", 0.3))
+        self.assertEqual(effects.parse_transition({"type": "crossfade", "duration": 0.5}, st), ("fade", 0.5))
+        self.assertEqual(effects.parse_transition("punch", st), ("punch", 0.0))
+        with self.assertRaises(SystemExit):
+            effects.parse_transition("nope", st)
+
+    def test_timeline_overlap_shortens(self):
+        tl = Timeline([{"start": 0, "end": 5}, {"start": 10, "end": 15, "overlap": 0.4}])
+        self.assertAlmostEqual(tl.duration, 9.6)
+        self.assertAlmostEqual(tl.pieces[1]["out_start"], 4.6)
+
+    def test_events_and_zoompan(self):
+        from clipstudio import effects
+        st = effects.style_for({"id": "x", "style": "viral"}, DEFAULTS)
+        pieces = [{"start": 0, "end": 4, "_seg": 0, "_first_of_seg": True},
+                  {"start": 4.5, "end": 9, "_seg": 0, "_first_of_seg": False},
+                  {"start": 20, "end": 26, "_seg": 1, "_first_of_seg": True}]
+        segs = [{"start": 0, "end": 9}, {"start": 20, "end": 26}]
+        effects.assign_transitions(pieces, segs, {}, st)
+        effects.clamp_overlaps(pieces)
+        self.assertEqual(pieces[2]["trans"], "smoothleft")
+        tl = Timeline(pieces)
+        clip = {"id": "x", "hook": "h", "_cta_start": None}
+        ev = effects.build_events(clip, st, tl, [{"t": 2.0, "y": 0.3}], tl.duration, 1.0, [], [])
+        names = [s["name"] for s in ev["sfx"]]
+        self.assertIn("whoosh", names)
+        self.assertIn("impact", names)
+        self.assertTrue(ev["shake"])
+        zp = effects.zoompan_filter(ev, st, 1080, 1920, 30, tl.duration, 2)
+        self.assertIn("zoompan=z='1+", zp)
+        self.assertIn("scale=2160:3840", zp)
+
+    def test_style_none_is_quiet(self):
+        from clipstudio import effects
+        st = effects.style_for({"id": "x", "style": "none"}, DEFAULTS)
+        tl = Timeline([{"start": 0, "end": 10}])
+        ev = effects.build_events({"id": "x", "hook": "h"}, st, tl, [{"t": 1}], 10, 1.0, [], [])
+        self.assertEqual((ev["sfx"], ev["ass"], ev["zoom"]), ([], [], []))
+        self.assertIsNone(effects.zoompan_filter(ev, st, 1080, 1920, 30, 10, 1))
+
+
+class ScheduleTests(unittest.TestCase):
+    def test_priority_slots(self):
+        import datetime as dt
+        from clipstudio.review import schedule_slots
+        cfg = {"posting": {"slots": ["19:30", "12:00", "07:30"], "per_day": 2}}
+        out = schedule_slots(cfg, 3, dt.date(2026, 10, 1))
+        self.assertEqual(out, ["2026-10-01 19:30", "2026-10-01 12:00", "2026-10-02 19:30"])

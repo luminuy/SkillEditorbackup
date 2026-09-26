@@ -5,6 +5,9 @@ description: เรนเดอร์คลิปสั้นแนวตั้�
 
 # เรนเดอร์ (Video Editor)
 
+เอฟเฟกต์/transition/เสียงเอฟเฟกต์มาจาก `style` + `fx`/`sfx` ใน plan (skill `clip-effects`) — render ใส่ให้ในรอบเดียว
+ต้องการแต่งต่อใน CapCut → `python3 -m clipstudio capcut <slug>` (skill `clip-capcut`)
+
 ## Loop มาตรฐาน: draft → ดู → แก้ → final
 ```bash
 python3 -m clipstudio plan-check <slug>
@@ -12,7 +15,11 @@ python3 -m clipstudio render <slug> --draft                 # เร็ว (ultr
 python3 -m clipstudio snapshot <slug> <clip-id>             # แล้ว Read projects/<slug>/work/snap_<id>.jpg
 python3 -m clipstudio render <slug> --clip <id> [--clip <id2>]   # final เฉพาะที่ผ่าน
 ```
-ทดสอบแล้ว: คลิป 24s ใช้ ~11s (draft) / ~17s (final) บน CPU 4 คอร์
+ทดสอบแล้ว (CPU 4 คอร์, คลิป ~24s): ไม่มีเอฟเฟกต์ ~11s draft / ~17s final · style dynamic ~25s draft / ~45s final
+**QA/review ใช้เฉพาะไฟล์ final** — งานนี้ยังไม่เสร็จจนกว่าทุกคลิปจะมี `renders/<id>.mp4`
+
+snapshot ใช้เวลาตายตัว (0.6s, 25/50/75%, ท้าย) อาจพลาดจังหวะเปิดไพ่/เอฟเฟกต์ → ดูเฉพาะจุดด้วย
+`python3 -m clipstudio frames <slug> --video projects/<slug>/renders/<id>.draft.mp4 --times 3.4,3.7,12.1 --tag chk`
 
 ## สิ่งที่ต้องตรวจใน snapshot (ทุกคลิป)
 - [ ] ซับอ่านออก ไม่ล้นขอบ ไม่ทับหน้า/มือ/ไพ่ที่เป็นจุดสนใจ

@@ -87,36 +87,67 @@ class AssBuilder:
         return "\n".join(head + self.events) + "\n"
 
     # ---- layers ----------------------------------------------------------
-    def captions(self, words: list[dict], override: dict | None = None):
+    def caption_cards(self, words: list[dict], override: dict | None = None) -> list[dict]:
+        """Group words into on-screen caption cards (also used for .srt export)."""
+        cap = dict(self.cfg["captions"])
+        cap.update(override or {})
+        style = cap.get("style", "highlight")
+        size = cap["size"] * self.k * (1.25 if style == "pop" else 1.0)
+        meas = Measurer(self.cfg["fonts"]["caption"], int(size))
+        n_lines = 1 if style == "pop" else max(1, int(cap.get("lines", 1)))
+        return self._cards(words, meas, self.W * cap["max_width"], n_lines, cap["max_card_seconds"])
+
+    def captions(self, words: list[dict], override: dict | None = None, anim: str = "none",
+                 emphasis: list[str] | None = None):
+        """anim: none | fade | pop | bounce (entrance of each caption card).
+        emphasis: words drawn in the emphasis colour (keywords like ความรัก, card names)."""
         cap = dict(self.cfg["captions"])
         cap.update(override or {})
         if not cap.get("enabled", True) or not words:
             return
         style = cap.get("style", "highlight")
-        size = cap["size"] * self.k * (1.25 if style == "pop" else 1.0)
-        meas = Measurer(self.cfg["fonts"]["caption"], int(size))
-        max_px = self.W * cap["max_width"]
-        n_lines = 1 if style == "pop" else max(1, int(cap.get("lines", 1)))
         x, y = self.W / 2, self.H * cap["y"]
         accent = hex_to_ass(self.cfg["brand"]["accent"])
+        emph_c = hex_to_ass(self.cfg["brand"].get("emphasis", self.cfg["brand"]["accent"]))
+        emphasis = [e for e in (emphasis or []) if e]
+        enter = {"fade": "\\fad(90,0)", "pop": "\\fscx86\\fscy86\\t(0,110,\\fscx100\\fscy100)",
+                 "bounce": "\\fscx70\\fscy70\\t(0,90,\\fscx112\\fscy112)\\t(90,180,\\fscx100\\fscy100)"
+                 }.get(anim, "")
+
+        def is_emph(w):
+            return any(e in w["text"] for e in emphasis)
+
+        def paint(v, active):
+            t = ass_escape(v["text"])
+            if active:
+                return f"{{\\c{accent}}}{t}{{\\r}}"
+            if is_emph(v):
+                return f"{{\\c{emph_c}}}{t}{{\\r}}"
+            return t
 
         if style == "pop":
             for i, w in enumerate(words):
                 end = words[i + 1]["start"] if i + 1 < len(words) and words[i + 1]["start"] - w["end"] < 0.4 else w["end"] + 0.15
                 txt = ass_escape(strip_emoji(w["text"]).strip())
-                if txt:
-                    self.add(w["start"], end, "Caption",
-                             f"{{\\an5\\pos({x:.0f},{y:.0f})\\fscx80\\fscy80\\t(0,90,\\fscx100\\fscy100)}}{txt}", 2)
+                if not txt:
+                    continue
+                big = "\\fscx118\\fscy118" if is_emph(w) else ""
+                col = f"\\c{emph_c}" if is_emph(w) else ""
+                scale_to = 118 if is_emph(w) else 100
+                self.add(w["start"], end, "Caption",
+                         f"{{\\an5\\pos({x:.0f},{y:.0f}){col}\\fscx80\\fscy80"
+                         f"\\t(0,90,\\fscx{scale_to}\\fscy{scale_to})}}{txt}" if big else
+                         f"{{\\an5\\pos({x:.0f},{y:.0f})\\fscx80\\fscy80\\t(0,90,\\fscx100\\fscy100)}}{txt}", 2)
             return
 
-        for card in self._cards(words, meas, max_px, n_lines, cap["max_card_seconds"]):
+        for card in self.caption_cards(words, override):
             lines = card["lines"]  # list of lists of words
             flat = [w for ln in lines for w in ln]
             c_start, c_end = card["start"], card["end"]
             pos = f"\\an5\\pos({x:.0f},{y:.0f})"
             if style == "plain":
-                txt = "\\N".join(ass_escape("".join(w["text"] for w in ln).strip()) for ln in lines)
-                self.add(c_start, c_end, "Caption", f"{{{pos}}}{txt}", 2)
+                txt = "\\N".join("".join(paint(v, False) for v in ln).strip() for ln in lines)
+                self.add(c_start, c_end, "Caption", f"{{{pos}{enter}}}{txt}", 2)
             elif style == "karaoke":
                 parts = []
                 for i, w in enumerate(flat):
@@ -124,19 +155,60 @@ class AssBuilder:
                     dur_cs = max(1, int(round((nxt - (w["start"] if i else c_start)) * 100)))
                     sep = "\\N" if i and any(w is ln[0] for ln in lines[1:]) else ""
                     parts.append(f"{sep}{{\\kf{dur_cs}}}{ass_escape(w['text'])}")
-                self.add(c_start, c_end, "Caption", f"{{{pos}}}" + "".join(parts).strip(), 2)
+                self.add(c_start, c_end, "Caption", f"{{{pos}{enter}}}" + "".join(parts).strip(), 2)
             else:  # highlight: whole card visible, current word in accent colour
                 for i, w in enumerate(flat):
                     a = c_start if i == 0 else w["start"]
                     b = flat[i + 1]["start"] if i + 1 < len(flat) else c_end
-                    out_lines = []
-                    for ln in lines:
-                        seg = ""
-                        for v in ln:
-                            t = ass_escape(v["text"])
-                            seg += f"{{\\c{accent}}}{t}{{\\r}}" if v is w else t
-                        out_lines.append(seg.strip())
-                    self.add(a, b, "Caption", f"{{{pos}}}" + "\\N".join(out_lines), 2)
+                    body = "\\N".join("".join(paint(v, v is w) for v in ln).strip() for ln in lines)
+                    self.add(a, b, "Caption", f"{{{pos}{enter if i == 0 else ''}}}" + body, 2)
+
+    # ---- effects layers -----------------------------------------------------
+    def fx(self, events: list[dict]):
+        """Overlay effects resolved by effects.build_events: flash, flash-strong, sparkle, stars, glow."""
+        import random as _r
+
+        W, H, k = self.W, self.H, self.k
+        gold = hex_to_ass(self.cfg["brand"]["accent"])
+        full = f"m 0 0 l {W} 0 {W} {H} 0 {H}"
+        for e in events:
+            t, kind = e["t"], e["kind"]
+            rnd = _r.Random(e.get("seed", t))
+            if kind in ("flash", "flash-strong"):
+                d = e.get("dur") or 0.28
+                alpha = "&H00&" if kind == "flash-strong" else "&H50&"
+                self.add(t, t + d, "Bar", f"{{\\an7\\pos(0,0)\\p1\\c&HFFFFFF&\\alpha{alpha}\\bord0\\shad0"
+                                          f"\\fad(0,{int(d * 1000)})}}{full}{{\\p0}}", 0)  # under the text layers
+            elif kind == "glow":
+                d = e.get("dur") or 1.4
+                cy = (e.get("y") or 0.45) * H
+                r = int(W * 0.55)
+                circle = (f"m {-r} 0 b {-r} {-r * 0.55:.0f} {-r * 0.55:.0f} {-r} 0 {-r} b {r * 0.55:.0f} {-r} {r} {-r * 0.55:.0f} {r} 0 "
+                          f"b {r} {r * 0.55:.0f} {r * 0.55:.0f} {r} 0 {r} b {-r * 0.55:.0f} {r} {-r} {r * 0.55:.0f} {-r} 0")
+                self.add(t, t + d, "Bar", f"{{\\an7\\pos({W / 2:.0f},{cy:.0f})\\p1\\c{gold}\\bord0\\shad0"
+                                          f"\\blur{int(60 * k)}\\alpha&HFF&\\t(0,{int(d * 300)},\\alpha&HA0&)"
+                                          f"\\t({int(d * 300)},{int(d * 1000)},\\alpha&HFF&)}}{circle}{{\\p0}}", 0)
+            elif kind in ("sparkle", "stars"):
+                d = e.get("dur") or 1.0
+                cx = (e.get("x") or 0.5) * W
+                cy = (e.get("y") or (0.33 if kind == "sparkle" else 0.5)) * H
+                n = 12 if kind == "sparkle" else 22
+                spread_x, spread_y = W * (0.42 if kind == "sparkle" else 0.5), H * (0.09 if kind == "sparkle" else 0.3)
+                for i in range(n):
+                    s = int(rnd.uniform(20, 46) * k)
+                    star = f"m 0 {-s} l {s // 5} {-s // 5} {s} 0 {s // 5} {s // 5} 0 {s} {-s // 5} {s // 5} {-s} 0 {-s // 5} {-s // 5}"
+                    x0 = cx + rnd.uniform(-spread_x, spread_x) * 0.3
+                    y0 = cy + rnd.uniform(-spread_y, spread_y) * 0.3
+                    x1 = cx + rnd.uniform(-spread_x, spread_x)
+                    y1 = cy + rnd.uniform(-spread_y, spread_y) - 40 * k
+                    st = t + i * (d * 0.35 / n)
+                    life = int(d * 1000 * rnd.uniform(0.65, 1.0))
+                    rot = rnd.randint(0, 90)
+                    col = gold if i % 3 else "&HFFFFFF&"
+                    tag = (f"\\an5\\move({x0:.0f},{y0:.0f},{x1:.0f},{y1:.0f})\\p1\\c{col}\\bord0\\shad0\\blur{max(1, int(2 * k))}"
+                           f"\\frz{rot}\\fscx10\\fscy10\\t(0,{int(life * 0.25)},\\fscx120\\fscy120)"
+                           f"\\t({int(life * 0.25)},{life},\\fscx30\\fscy30\\frz{rot + 120}\\alpha&HFF&)")
+                    self.add(st, st + life / 1000, "Bar", f"{{{tag}}}{star}{{\\p0}}", 8)
 
     def _cards(self, words, meas, max_px, n_lines, max_secs):
         cards_out, cur_lines, cur = [], [], []

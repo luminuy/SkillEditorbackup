@@ -20,7 +20,8 @@ def contact_sheet(video: str, times: list[float], out: str, cols: int = 4, width
             p = os.path.join(td, f"f{i}.jpg")
             try:
                 ff.extract_frame(video, t, p, width)
-                tiles.append((t, Image.open(p).convert("RGB")))
+                if os.path.exists(p):  # ffmpeg writes nothing (without error) past the last frame
+                    tiles.append((t, Image.open(p).convert("RGB")))
             except ff.FFmpegError:
                 continue
         if not tiles:
@@ -50,9 +51,10 @@ def frames(slug: str, times: list[float] | None = None, every: float | None = No
     if not times:
         step = every or max(1.0, dur / (count + 1))
         times, t = [], step
-        while t < dur and len(times) < 48:
+        while t < dur - 0.3 and len(times) < 48:
             times.append(round(t, 2))
             t += step
+    times = [min(max(0.0, t), max(0.0, dur - 0.3)) for t in times]
     out = project.path("work", f"frames_{tag}.jpg")
     contact_sheet(src, times, out, cols=4 if len(times) > 6 else len(times), width=360 if len(times) > 6 else 480)
     print(out)

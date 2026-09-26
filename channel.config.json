@@ -3,6 +3,20 @@
   "channel_name": "ดูดวงไพ่ทาโรต์",
   "handle": "@yourtarotchannel",
   "language": "th",
-  "platforms": ["tiktok", "reels", "shorts", "facebook"],
-  "posting": {"timezone": "Asia/Bangkok", "slots": ["07:30", "12:00", "19:30", "21:30"]}
+  "platforms": [
+    "tiktok",
+    "reels",
+    "shorts",
+    "facebook"
+  ],
+  "posting": {
+    "timezone": "Asia/Bangkok",
+    "slots": [
+      "19:30",
+      "12:00",
+      "21:30",
+      "07:30"
+    ],
+    "per_day": 2
+  }
 }

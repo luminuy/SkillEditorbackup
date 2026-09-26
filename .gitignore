@@ -4,6 +4,8 @@ input/*
 !input/.gitkeep
 assets/music/*
 !assets/music/README.md
+assets/sfx/*
+!assets/sfx/README.md
 *.mp4
 *.mov
 *.wav

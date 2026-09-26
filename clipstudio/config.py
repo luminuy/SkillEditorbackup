@@ -23,14 +23,14 @@ FORMATS = {
 # Platform delivery specs used by QA and the review sheet. Durations are the
 # *recommended* windows for reach, plus the hard upload cap where known.
 PLATFORMS = {
-    "tiktok":   {"label": "TikTok",           "format": "vertical",   "max_seconds": 600, "sweet_spot": [21, 60],
-                 "caption_limit": 4000, "hashtags": [3, 5]},
+    "tiktok":   {"label": "TikTok",           "format": "vertical",   "max_seconds": 600, "sweet_spot": [20, 60],
+                 "caption_limit": 4000, "hashtags": [3, 6]},
     "reels":    {"label": "Instagram Reels",  "format": "vertical",   "max_seconds": 180, "sweet_spot": [15, 60],
                  "caption_limit": 2200, "hashtags": [3, 5]},
     "shorts":   {"label": "YouTube Shorts",   "format": "vertical",   "max_seconds": 180, "sweet_spot": [20, 58],
-                 "title_limit": 100, "caption_limit": 5000, "hashtags": [2, 4]},
+                 "title_limit": 100, "caption_limit": 5000, "hashtags": [3, 5]},
     "facebook": {"label": "Facebook Reels",   "format": "vertical",   "max_seconds": 90,  "sweet_spot": [15, 60],
-                 "caption_limit": 5000, "hashtags": [2, 5]},
+                 "caption_limit": 5000, "hashtags": [2, 4]},
     "youtube":  {"label": "YouTube (long)",   "format": "horizontal", "max_seconds": 43200, "sweet_spot": [480, 1200],
                  "title_limit": 100, "caption_limit": 5000, "hashtags": [2, 3]},
 }
@@ -47,6 +47,7 @@ DEFAULTS: dict = {
         "outline": "#12051F",
         "hook_text": "#FFFFFF",
         "hook_box": "#2B1055",
+        "emphasis": "#FF9EE5",    # keyword colour in captions (ความรัก, เนื้อคู่ …)
     },
     "fonts": {"caption": "Kanit ExtraBold", "title": "Kanit ExtraBold", "body": "Kanit"},
     "captions": {
@@ -67,13 +68,18 @@ DEFAULTS: dict = {
     "watermark": {"enabled": True, "text": None, "opacity": 0.55, "size": 34, "position": "top-left"},
     "progress_bar": {"enabled": True, "height": 10},
     "cta": {"enabled": True, "text": "กดติดตามไว้ แล้วมาดูดวงด้วยกันนะคะ", "seconds": 2.5},
+    # CTA used automatically when a clip's chapter kind matches (set by the producer via clip["kind"])
+    "cta_by_kind": {},
     "disclaimer": {"burn_in": False, "text": "ดูดวงเพื่อเป็นแนวทางและความบันเทิง โปรดใช้วิจารณญาณ", "seconds": 3.0},
     "audio": {"target_lufs": -14.0, "true_peak": -1.5, "voice_enhance": True, "music": None,
-              "music_volume": 0.12, "duck": True},
+              "music_volume": 0.12, "duck": True, "sfx": True, "sfx_volume": 1.0},
+    # Pacing & effects. style: none | calm | dynamic | viral (see clipstudio/effects.py STYLES)
+    "effects": {"style": "dynamic", "motion_oversample": 2, "emphasis_words": [], "overrides": {}},
     "edit": {"remove_silence": True, "silence_db": -35.0, "min_silence": 0.45, "pad": 0.12,
              "min_piece": 0.25, "fps": 30, "crf": 19, "preset": "medium", "fade_out": 0.35},
     "platforms": ["tiktok", "reels", "shorts", "facebook"],
-    "posting": {"timezone": "Asia/Bangkok", "slots": ["07:30", "12:00", "19:30", "21:30"]},
+    # slots in PRIORITY order (best first); plan order = clip priority; per_day clips per day
+    "posting": {"timezone": "Asia/Bangkok", "slots": ["19:30", "12:00", "21:30", "07:30"], "per_day": 2},
 }
 
 
